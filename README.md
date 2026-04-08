@@ -41,7 +41,3 @@ npm run build  # production build
 If you find this plugin useful, consider buying me a coffee:
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/serandel)
-
-## License
-
-MIT
