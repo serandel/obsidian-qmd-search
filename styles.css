@@ -1,1 +1,145 @@
 /* obsidian-qmd-search styles */
+
+.qmd-search-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 8px;
+}
+
+.qmd-search-input {
+	width: 100%;
+	padding: 8px 12px;
+	margin-bottom: 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: 14px;
+}
+
+.qmd-search-input:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.qmd-results-container {
+	flex: 1;
+	overflow-y: auto;
+}
+
+.qmd-section {
+	margin-bottom: 12px;
+}
+
+.qmd-section-header {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	padding: 4px 0;
+	margin-bottom: 4px;
+	font-weight: 600;
+}
+
+.qmd-section-keyword .qmd-section-header {
+	color: var(--text-accent);
+}
+
+.qmd-section-semantic .qmd-section-header {
+	color: var(--interactive-accent);
+}
+
+.qmd-result-item {
+	padding: 8px;
+	border-radius: 4px;
+	cursor: pointer;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.qmd-result-item:hover {
+	background: var(--background-secondary);
+}
+
+.qmd-result-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.qmd-result-title {
+	color: var(--text-accent);
+	font-size: 13px;
+	font-weight: 500;
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.qmd-result-score {
+	font-size: 10px;
+	padding: 1px 6px;
+	border-radius: 3px;
+	margin-left: 8px;
+	flex-shrink: 0;
+}
+
+.qmd-score-keyword {
+	background: var(--text-accent);
+	color: var(--background-primary);
+}
+
+.qmd-score-semantic {
+	background: var(--interactive-accent);
+	color: var(--background-primary);
+}
+
+.qmd-result-snippet {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin: 4px 0;
+	padding: 4px 8px;
+	background: var(--background-secondary-alt);
+	border-radius: 3px;
+	border-left: 2px solid var(--background-modifier-border);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.qmd-section-keyword .qmd-result-snippet {
+	border-left-color: var(--text-accent);
+}
+
+.qmd-section-semantic .qmd-result-snippet {
+	border-left-color: var(--interactive-accent);
+}
+
+.qmd-result-path {
+	font-size: 11px;
+	color: var(--text-faint);
+	margin-top: 2px;
+}
+
+.qmd-no-results {
+	text-align: center;
+	color: var(--text-muted);
+	padding: 20px;
+	font-size: 13px;
+}
+
+.qmd-error {
+	text-align: center;
+	color: var(--text-error);
+	padding: 12px;
+	font-size: 13px;
+}
+
+.qmd-kofi {
+	margin-top: 24px;
+	padding-top: 12px;
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: 13px;
+	color: var(--text-muted);
+}
