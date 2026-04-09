@@ -1,1 +1,2 @@
 - [Commit and push at meaningful changesets](feedback_commit_push.md) — batch changes, commit+push only when approved
+- [Commit after user confirms](feedback_commit_after_confirm.md) — commit immediately when user says a change works
