@@ -4,6 +4,6 @@
 	"version": "0.1.0",
 	"minAppVersion": "1.0.0",
 	"description": "Adds QMD-powered semantic search with progressive refinement",
-	"author": "serandel",
+	"author": "Sergio Delgado",
 	"isDesktopOnly": true
 }
