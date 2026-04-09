@@ -1,6 +1,7 @@
 import { ItemView, TFile, WorkspaceLeaf } from "obsidian";
 import type QmdPlugin from "./main";
 import { type DisplayResult, type QmdSearchResult } from "./types";
+import { cleanSnippet, extractFilename, extractLineFromSnippet, extractPath, extractVaultPath } from "./view-utils";
 
 export const VIEW_TYPE_QMD_SEARCH = "qmd-search-view";
 
@@ -196,7 +197,7 @@ export class QmdSearchView extends ItemView {
 
 			const header = item.createEl("div", { cls: "qmd-result-header" });
 			header.createEl("span", {
-				text: result.title || this.extractFilename(result.file),
+				text: result.title || extractFilename(result.file),
 				cls: "qmd-result-title",
 			});
 			header.createEl("span", {
@@ -206,7 +207,7 @@ export class QmdSearchView extends ItemView {
 
 			// Snippet
 			if (result.snippet) {
-				const snippetText = this.cleanSnippet(result.snippet);
+				const snippetText = cleanSnippet(result.snippet);
 				if (snippetText) {
 					item.createEl("div", {
 						text: snippetText,
@@ -217,7 +218,7 @@ export class QmdSearchView extends ItemView {
 
 			// Path
 			item.createEl("div", {
-				text: this.extractPath(result.file),
+				text: extractPath(result.file),
 				cls: "qmd-result-path",
 			});
 
@@ -229,8 +230,7 @@ export class QmdSearchView extends ItemView {
 	}
 
 	private async openResult(result: QmdSearchResult): Promise<void> {
-		// Extract vault-relative path from qmd:// URI
-		const vaultPath = this.extractVaultPath(result.file);
+		const vaultPath = extractVaultPath(result.file);
 		if (!vaultPath) return;
 
 		const file = this.app.vault.getAbstractFileByPath(vaultPath);
@@ -240,7 +240,7 @@ export class QmdSearchView extends ItemView {
 		await leaf.openFile(file);
 
 		// Try to scroll to matching line
-		const line = this.extractLineFromSnippet(result.snippet);
+		const line = extractLineFromSnippet(result.snippet);
 		if (line !== null) {
 			const view = leaf.view as any;
 			if (view?.editor) {
@@ -251,39 +251,6 @@ export class QmdSearchView extends ItemView {
 				);
 			}
 		}
-	}
-
-	private extractVaultPath(qmdFile: string): string | null {
-		// qmd://obsidian/path/to/note.md → path/to/note.md
-		const match = qmdFile.match(/^qmd:\/\/[^/]+\/(.+)$/);
-		return match?.[1] ?? null;
-	}
-
-	private extractLineFromSnippet(snippet: string): number | null {
-		// @@ -6,4 @@ (5 before, 2 after) → line 6
-		const match = snippet.match(/^@@ -(\d+)/);
-		if (match) {
-			return parseInt(match[1]!, 10) - 1; // 0-indexed
-		}
-		return null;
-	}
-
-	private cleanSnippet(snippet: string): string {
-		// Remove the @@ header line
-		return snippet.replace(/^@@[^\n]*\n/, "").trim();
-	}
-
-	private extractFilename(file: string): string {
-		return file.split("/").pop()?.replace(/\.md$/, "") ?? file;
-	}
-
-	private extractPath(file: string): string {
-		const vaultPath = this.extractVaultPath(file);
-		if (!vaultPath) return file;
-		// Remove filename, show directory path
-		const parts = vaultPath.split("/");
-		parts.pop();
-		return parts.join("/") || "/";
 	}
 
 	private cancelPendingQueries(): void {
