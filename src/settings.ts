@@ -60,9 +60,15 @@ export class QmdSettingsTab extends PluginSettingTab {
 		kofiDiv.createEl("p", {
 			text: "If you find this plugin useful, consider supporting its development:",
 		});
-		kofiDiv.createEl("a", {
-			text: "Buy me a coffee on Ko-fi",
+		const kofiLink = kofiDiv.createEl("a", {
 			href: "https://ko-fi.com/serandel",
+		});
+		kofiLink.createEl("img", {
+			attr: {
+				src: "https://ko-fi.com/img/githubbutton_sm.svg",
+				alt: "Buy me a coffee on Ko-fi",
+				height: "36",
+			},
 		});
 	}
 }
