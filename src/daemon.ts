@@ -1,7 +1,53 @@
-import { type ChildProcess, spawn } from "child_process";
+import { type ChildProcess, execFileSync, spawn } from "child_process";
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import { type QmdClient } from "./client";
+
+/**
+ * Resolve a binary name to its absolute path.
+ * Electron (especially Flatpak) strips the shell PATH, so bare command
+ * names like "qmd" won't be found by spawn(). We try multiple strategies:
+ * 1. Try common login shells (zsh, bash, sh) with -l -c which
+ * 2. Check well-known binary locations
+ */
+function resolveBinaryPath(binary: string): string {
+	if (binary.startsWith("/")) return binary;
+
+	// Try each shell as a login shell to resolve the binary
+	const shells = ["/bin/zsh", "/bin/bash", "/bin/sh"];
+	for (const shell of shells) {
+		if (!existsSync(shell)) continue;
+		try {
+			const resolved = execFileSync(shell, ["-l", "-c", `which ${binary}`], {
+				encoding: "utf-8",
+				timeout: 5000,
+			}).trim();
+			if (resolved && existsSync(resolved)) {
+				console.log(`[QMD] Resolved '${binary}' → '${resolved}' (via ${shell})`);
+				return resolved;
+			}
+		} catch {
+			// Try next shell
+		}
+	}
+
+	// Check well-known locations
+	const knownPaths = [
+		`/home/linuxbrew/.linuxbrew/bin/${binary}`,
+		`/usr/local/bin/${binary}`,
+		`/opt/homebrew/bin/${binary}`,
+		`${process.env.HOME}/.local/bin/${binary}`,
+	];
+	for (const p of knownPaths) {
+		if (existsSync(p)) {
+			console.log(`[QMD] Found '${binary}' at '${p}'`);
+			return p;
+		}
+	}
+
+	console.warn(`[QMD] Could not resolve '${binary}', using as-is`);
+	return binary;
+}
 
 export class QmdDaemonManager {
 	private process: ChildProcess | null = null;
@@ -19,25 +65,38 @@ export class QmdDaemonManager {
 		this.cleanupOrphan();
 
 		return new Promise((resolve, reject) => {
-			const proc = spawn(this.qmdBinaryPath, ["mcp", "--http", "--daemon"], {
+			const resolvedPath = resolveBinaryPath(this.qmdBinaryPath);
+
+			// Prepend the binary's directory to PATH so shell wrappers
+			// (e.g. qmd calling node) can find sibling binaries.
+			const binDir = resolvedPath.substring(0, resolvedPath.lastIndexOf("/"));
+			const env = {
+				...process.env,
+				PATH: binDir + ":" + (process.env.PATH || ""),
+			};
+
+			const proc = spawn(resolvedPath, ["mcp", "--http"], {
 				stdio: ["ignore", "pipe", "pipe"],
+				env,
 			});
 
 			this.process = proc;
 
-			let stdout = "";
+			let output = "";
 
-			proc.stdout?.on("data", (data: Buffer) => {
-				stdout += data.toString();
-				const portMatch = stdout.match(/port[:\s]+(\d+)/i);
-				if (portMatch) {
+			const parsePort = (data: Buffer) => {
+				output += data.toString();
+				const portMatch = output.match(/localhost:(\d+)/);
+				if (portMatch && this.port === 0) {
 					this.port = parseInt(portMatch[1]!, 10);
 					this.writePidFile(proc.pid!);
 					resolve(this.port);
 				}
-			});
+			};
 
+			proc.stdout?.on("data", parsePort);
 			proc.stderr?.on("data", (data: Buffer) => {
+				parsePort(data);
 				console.error("[QMD daemon]", data.toString());
 			});
 

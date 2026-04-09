@@ -4,7 +4,7 @@ Research into how the Obsidian plugin should connect to QMD for search.
 
 ## Option A: HTTP Daemon (recommended)
 
-Start `qmd mcp --http --daemon` as a child process on plugin load, communicate via HTTP API at `localhost:<port>`.
+Start `qmd mcp --http` as a foreground child process on plugin load, communicate via HTTP API at `localhost:<port>`. We use foreground mode (no `--daemon`) because the plugin manages the process lifecycle itself, and `--daemon` forks to background making stdout/stderr capture unreliable.
 
 **How it works:**
 - Plugin spawns QMD daemon in `onload()`
