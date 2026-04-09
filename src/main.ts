@@ -17,8 +17,9 @@ export default class QmdPlugin extends Plugin {
 		this.registerView(VIEW_TYPE_QMD_SEARCH, (leaf) => new QmdSearchView(leaf, this));
 
 		// Ribbon icon to open search
-		this.addRibbonIcon("search", "QMD Search", () => {
-			this.activateView();
+		this.addRibbonIcon("search", "QMD Search", async () => {
+			console.log("[QMD] Ribbon icon clicked");
+			await this.activateView();
 		});
 
 		// Command to open search
@@ -88,13 +89,14 @@ export default class QmdPlugin extends Plugin {
 	}
 
 	private async activateView(): Promise<void> {
+		console.log("[QMD] activateView called");
 		const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_QMD_SEARCH);
 		if (existing.length > 0) {
 			this.app.workspace.revealLeaf(existing[0]!);
 			return;
 		}
 
-		const leaf = this.app.workspace.getRightLeaf(false);
+		const leaf = this.app.workspace.getLeftLeaf(false);
 		if (leaf) {
 			await leaf.setViewState({
 				type: VIEW_TYPE_QMD_SEARCH,

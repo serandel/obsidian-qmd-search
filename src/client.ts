@@ -1,14 +1,18 @@
+import { request as httpRequest } from "http";
 import { type QmdSearchResult } from "./types";
 
 export class QmdClient {
-	private baseUrl: string;
+	private host: string;
+	private port: number;
 
 	constructor(host: string, port: number) {
-		this.baseUrl = `http://${host}:${port}`;
+		this.host = host;
+		this.port = port;
 	}
 
 	updateBaseUrl(host: string, port: number) {
-		this.baseUrl = `http://${host}:${port}`;
+		this.host = host;
+		this.port = port;
 	}
 
 	async searchLex(
@@ -46,43 +50,85 @@ export class QmdClient {
 	}
 
 	async healthCheck(): Promise<boolean> {
-		try {
-			const res = await fetch(`${this.baseUrl}/status`, {
-				signal: AbortSignal.timeout(2000),
+		return new Promise((resolve) => {
+			const timeout = setTimeout(() => resolve(false), 2000);
+			const req = httpRequest(
+				{ hostname: this.host, port: this.port, path: "/status", method: "GET" },
+				(res) => {
+					clearTimeout(timeout);
+					resolve(res.statusCode === 200);
+					res.resume();
+				}
+			);
+			req.on("error", () => {
+				clearTimeout(timeout);
+				resolve(false);
 			});
-			return res.ok;
-		} catch {
-			return false;
-		}
+			req.end();
+		});
 	}
 
-	private async doQuery(
+	private doQuery(
 		body: Record<string, unknown>,
 		timeoutMs: number,
 		signal?: AbortSignal
 	): Promise<QmdSearchResult[]> {
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-		if (signal) {
-			signal.addEventListener("abort", () => controller.abort());
-		}
-
-		try {
-			const res = await fetch(`${this.baseUrl}/query`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-				signal: controller.signal,
-			});
-
-			if (!res.ok) {
-				throw new Error(`QMD query failed: ${res.status} ${res.statusText}`);
+		return new Promise((resolve, reject) => {
+			if (signal?.aborted) {
+				reject(new DOMException("The operation was aborted", "AbortError"));
+				return;
 			}
 
-			return (await res.json()) as QmdSearchResult[];
-		} finally {
-			clearTimeout(timeout);
-		}
+			const payload = JSON.stringify(body);
+			const timeout = setTimeout(() => {
+				req.destroy();
+				reject(new DOMException("The operation was aborted", "AbortError"));
+			}, timeoutMs);
+
+			const req = httpRequest(
+				{
+					hostname: this.host,
+					port: this.port,
+					path: "/query",
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"Content-Length": Buffer.byteLength(payload),
+					},
+				},
+				(res) => {
+					let data = "";
+					res.on("data", (chunk) => (data += chunk));
+					res.on("end", () => {
+						clearTimeout(timeout);
+						if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+							try {
+								resolve(JSON.parse(data) as QmdSearchResult[]);
+							} catch {
+								reject(new Error("QMD query returned invalid JSON"));
+							}
+						} else {
+							reject(new Error(`QMD query failed: ${res.statusCode} ${res.statusMessage}`));
+						}
+					});
+				}
+			);
+
+			req.on("error", (err) => {
+				clearTimeout(timeout);
+				reject(err);
+			});
+
+			if (signal) {
+				signal.addEventListener("abort", () => {
+					clearTimeout(timeout);
+					req.destroy();
+					reject(new DOMException("The operation was aborted", "AbortError"));
+				});
+			}
+
+			req.write(payload);
+			req.end();
+		});
 	}
 }

@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createServer, type Server } from "http";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { QmdClient } from "./client";
 import type { QmdSearchResult } from "./types";
 
@@ -13,109 +14,104 @@ const mockResults: QmdSearchResult[] = [
 	},
 ];
 
-function mockFetchOk(body: unknown) {
-	return vi.fn().mockResolvedValue({
-		ok: true,
-		json: () => Promise.resolve(body),
-	});
-}
+let server: Server;
+let port: number;
+let lastRequest: { method: string; path: string; body: string };
+let serverResponse: { status: number; body: string };
 
-function mockFetchError(status: number, statusText: string) {
-	return vi.fn().mockResolvedValue({
-		ok: false,
-		status,
-		statusText,
-		json: () => Promise.resolve({}),
-	});
-}
+beforeAll(
+	() =>
+		new Promise<void>((resolve) => {
+			server = createServer((req, res) => {
+				let body = "";
+				req.on("data", (chunk) => (body += chunk));
+				req.on("end", () => {
+					lastRequest = {
+						method: req.method ?? "",
+						path: req.url ?? "",
+						body,
+					};
+					res.writeHead(serverResponse.status, {
+						"Content-Type": "application/json",
+					});
+					res.end(serverResponse.body);
+				});
+			});
+			server.listen(0, "127.0.0.1", () => {
+				const addr = server.address();
+				port = typeof addr === "object" && addr ? addr.port : 0;
+				resolve();
+			});
+		})
+);
+
+afterAll(
+	() =>
+		new Promise<void>((resolve) => {
+			server.close(() => resolve());
+		})
+);
+
+afterEach(() => {
+	serverResponse = { status: 200, body: "[]" };
+});
 
 describe("QmdClient", () => {
-	let client: QmdClient;
-
-	beforeEach(() => {
-		client = new QmdClient("localhost", 8080);
-	});
-
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
-	describe("constructor and updateBaseUrl", () => {
-		it("constructs with host and port", () => {
-			// Verify by making a request and checking the URL
-			const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(mockFetchOk(mockResults));
-			client.searchLex("test", "obsidian", 10);
-			expect(fetchSpy).toHaveBeenCalledWith(
-				"http://localhost:8080/query",
-				expect.any(Object)
-			);
-		});
-
-		it("updates base URL", () => {
-			client.updateBaseUrl("example.com", 9090);
-			const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(mockFetchOk(mockResults));
-			client.searchLex("test", "obsidian", 10);
-			expect(fetchSpy).toHaveBeenCalledWith(
-				"http://example.com:9090/query",
-				expect.any(Object)
-			);
-		});
-	});
+	function client() {
+		return new QmdClient("127.0.0.1", port);
+	}
 
 	describe("searchLex", () => {
 		it("sends correct query body", async () => {
-			const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(mockFetchOk(mockResults));
+			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
 
-			await client.searchLex("hello world", "obsidian", 20);
+			await client().searchLex("hello world", "obsidian", 20);
 
-			const call = fetchSpy.mock.calls[0]!;
-			const body = JSON.parse(call[1]!.body as string);
+			const body = JSON.parse(lastRequest.body);
 			expect(body).toEqual({
 				searches: [{ type: "lex", query: "hello world" }],
 				collections: ["obsidian"],
 				limit: 20,
 			});
+			expect(lastRequest.method).toBe("POST");
+			expect(lastRequest.path).toBe("/query");
 		});
 
 		it("returns parsed results", async () => {
-			vi.spyOn(globalThis, "fetch").mockImplementation(mockFetchOk(mockResults));
+			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
 
-			const results = await client.searchLex("test", "obsidian", 10);
+			const results = await client().searchLex("test", "obsidian", 10);
 
 			expect(results).toEqual(mockResults);
 			expect(results[0]!.title).toBe("Test Note");
 		});
 
 		it("throws on non-ok response", async () => {
-			vi.spyOn(globalThis, "fetch").mockImplementation(mockFetchError(500, "Internal Server Error"));
+			serverResponse = { status: 500, body: "{}" };
 
-			await expect(client.searchLex("test", "obsidian", 10)).rejects.toThrow(
-				"QMD query failed: 500 Internal Server Error"
-			);
+			await expect(
+				client().searchLex("test", "obsidian", 10)
+			).rejects.toThrow("QMD query failed: 500");
 		});
 
 		it("respects abort signal", async () => {
+			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
 			const controller = new AbortController();
 			controller.abort();
 
-			vi.spyOn(globalThis, "fetch").mockImplementation(() => {
-				throw new DOMException("The operation was aborted", "AbortError");
-			});
-
 			await expect(
-				client.searchLex("test", "obsidian", 10, controller.signal)
-			).rejects.toThrow("The operation was aborted");
+				client().searchLex("test", "obsidian", 10, controller.signal)
+			).rejects.toThrow("aborted");
 		});
 	});
 
 	describe("searchHybrid", () => {
 		it("sends expand type in query", async () => {
-			const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(mockFetchOk(mockResults));
+			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
 
-			await client.searchHybrid("semantic query", "my-collection", 5);
+			await client().searchHybrid("semantic query", "my-collection", 5);
 
-			const call = fetchSpy.mock.calls[0]!;
-			const body = JSON.parse(call[1]!.body as string);
+			const body = JSON.parse(lastRequest.body);
 			expect(body).toEqual({
 				searches: [{ type: "expand", query: "semantic query" }],
 				collections: ["my-collection"],
@@ -124,47 +120,44 @@ describe("QmdClient", () => {
 		});
 
 		it("returns parsed results", async () => {
-			vi.spyOn(globalThis, "fetch").mockImplementation(mockFetchOk(mockResults));
+			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
 
-			const results = await client.searchHybrid("test", "obsidian", 10);
+			const results = await client().searchHybrid("test", "obsidian", 10);
 			expect(results).toEqual(mockResults);
 		});
 	});
 
 	describe("healthCheck", () => {
 		it("returns true when server responds ok", async () => {
-			vi.spyOn(globalThis, "fetch").mockResolvedValue({
-				ok: true,
-			} as Response);
-
-			expect(await client.healthCheck()).toBe(true);
+			serverResponse = { status: 200, body: "{}" };
+			expect(await client().healthCheck()).toBe(true);
 		});
 
 		it("returns false when server responds not ok", async () => {
-			vi.spyOn(globalThis, "fetch").mockResolvedValue({
-				ok: false,
-			} as Response);
-
-			expect(await client.healthCheck()).toBe(false);
+			serverResponse = { status: 500, body: "{}" };
+			expect(await client().healthCheck()).toBe(false);
 		});
 
-		it("returns false when fetch throws", async () => {
-			vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("connection refused"));
-
-			expect(await client.healthCheck()).toBe(false);
+		it("returns false when server unreachable", async () => {
+			const unreachable = new QmdClient("127.0.0.1", 1);
+			expect(await unreachable.healthCheck()).toBe(false);
 		});
 
-		it("calls /status endpoint", async () => {
-			const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-				ok: true,
-			} as Response);
+		it("hits /status endpoint", async () => {
+			serverResponse = { status: 200, body: "{}" };
+			await client().healthCheck();
+			expect(lastRequest.path).toBe("/status");
+		});
+	});
 
-			await client.healthCheck();
+	describe("updateBaseUrl", () => {
+		it("uses updated host and port", async () => {
+			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
+			const c = new QmdClient("127.0.0.1", 1);
+			c.updateBaseUrl("127.0.0.1", port);
 
-			expect(fetchSpy).toHaveBeenCalledWith(
-				"http://localhost:8080/status",
-				expect.objectContaining({ signal: expect.any(AbortSignal) })
-			);
+			const results = await c.searchLex("test", "obsidian", 10);
+			expect(results).toEqual(mockResults);
 		});
 	});
 });
