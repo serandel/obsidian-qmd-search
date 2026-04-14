@@ -103,7 +103,9 @@ export class QmdClient {
 						clearTimeout(timeout);
 						if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
 							try {
-								resolve(JSON.parse(data) as QmdSearchResult[]);
+								const parsed = JSON.parse(data);
+									const results = Array.isArray(parsed) ? parsed : parsed.results ?? [];
+									resolve(results as QmdSearchResult[]);
 							} catch {
 								reject(new Error("QMD query returned invalid JSON"));
 							}
