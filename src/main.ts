@@ -9,6 +9,8 @@ export default class QmdPlugin extends Plugin {
 	settings: QmdSettings = DEFAULT_SETTINGS;
 	daemon: QmdDaemonManager | null = null;
 	client: QmdClient | null = null;
+	daemonReady = false;
+	daemonError: string | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -34,8 +36,8 @@ export default class QmdPlugin extends Plugin {
 		// Settings tab
 		this.addSettingTab(new QmdSettingsTab(this.app, this));
 
-		// Start daemon
-		await this.startDaemon();
+		// Start daemon in background — don't block plugin load
+		this.startDaemon();
 	}
 
 	onunload() {
@@ -48,6 +50,8 @@ export default class QmdPlugin extends Plugin {
 	private readonly MAX_RESTART_ATTEMPTS = 3;
 
 	private async startDaemon(): Promise<void> {
+		this.daemonReady = false;
+		this.daemonError = null;
 		try {
 			const pluginDir = `${(this.app.vault.adapter as any).basePath}/.obsidian/plugins/${this.manifest.id}`;
 
@@ -55,6 +59,7 @@ export default class QmdPlugin extends Plugin {
 			const port = await this.daemon.start();
 
 			this.client = new QmdClient(this.settings.host, port);
+			this.daemonReady = true;
 			this.restartAttempts = 0;
 
 			// Monitor for unexpected exit and auto-restart
@@ -71,6 +76,7 @@ export default class QmdPlugin extends Plugin {
 			console.log(`[QMD] Daemon started on port ${port}`);
 		} catch (err) {
 			console.error("[QMD] Failed to start daemon:", err);
+			this.daemonError = "Could not start QMD. Check that qmd is installed.";
 			new Notice(
 				"QMD Search: Could not start QMD daemon. Check that qmd is installed and on your PATH.",
 				10000
