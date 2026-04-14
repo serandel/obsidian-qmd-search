@@ -188,3 +188,5 @@ Minimal initial settings:
 6. **Hybrid debounce timing** — How long after the user stops typing before firing the hybrid query? (~500ms, 1s, only on Enter?) Decision deferred.
 
 7. **Result deduplication** — When a document appears in both BM25 and hybrid results, should it be shown twice (showing both scores) or deduplicated? Decision deferred until we see it in action.
+
+8. **Custom QMD index path** — Inside a Flatpak sandbox, `XDG_CACHE_HOME` is redirected to an app-specific directory. We currently strip it from the spawned env so qmd falls back to `$HOME/.cache`. This breaks if the host has a custom `XDG_CACHE_HOME` pointing elsewhere. A plugin setting for the qmd index path would cover this edge case.
