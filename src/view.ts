@@ -12,11 +12,11 @@ export class QmdSearchView extends ItemView {
 	private lexResults: DisplayResult[] = [];
 	private hybridResults: DisplayResult[] = [];
 	private lexDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-	private hybridDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	private lexAbortController: AbortController | null = null;
 	private hybridAbortController: AbortController | null = null;
 	private currentQuery: string = "";
 	private errorMessage: string | null = null;
+	private semanticButton: HTMLButtonElement | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: QmdPlugin) {
 		super(leaf);
@@ -51,6 +51,12 @@ export class QmdSearchView extends ItemView {
 			this.onSearchInput(this.searchInput!.value);
 		});
 
+		this.searchInput.addEventListener("keydown", (e) => {
+			if (e.key === "Enter") {
+				this.triggerSemanticSearch();
+			}
+		});
+
 		// Results container
 		this.resultsContainer = container.createEl("div", {
 			cls: "qmd-results-container",
@@ -73,6 +79,8 @@ export class QmdSearchView extends ItemView {
 		}
 
 		this.errorMessage = null;
+		this.hybridResults = [];
+		this.hybridAbortController?.abort();
 
 		// Debounced BM25 query (fast)
 		if (this.lexDebounceTimer) clearTimeout(this.lexDebounceTimer);
@@ -80,18 +88,27 @@ export class QmdSearchView extends ItemView {
 		this.lexDebounceTimer = setTimeout(() => {
 			this.fireLexQuery(this.currentQuery);
 		}, 150);
+	}
 
-		// Debounced hybrid query (slower)
-		if (this.hybridDebounceTimer) clearTimeout(this.hybridDebounceTimer);
+	private triggerSemanticSearch(): void {
+		if (!this.currentQuery) return;
 		this.hybridAbortController?.abort();
-		this.hybridDebounceTimer = setTimeout(() => {
-			this.fireHybridQuery(this.currentQuery);
-		}, 800);
+		this.semanticButton?.remove();
+		this.semanticButton = null;
+		this.fireHybridQuery(this.currentQuery);
 	}
 
 	private async fireLexQuery(query: string): Promise<void> {
 		const client = (this.plugin as any).client;
-		if (!client) return;
+		if (!client) {
+			if ((this.plugin as any).daemonError) {
+				this.errorMessage = (this.plugin as any).daemonError;
+			} else {
+				this.errorMessage = "QMD is starting...";
+			}
+			this.renderResults();
+			return;
+		}
 		this.lexAbortController = new AbortController();
 		try {
 			const results = await client.searchLex(
@@ -117,7 +134,7 @@ export class QmdSearchView extends ItemView {
 
 	private async fireHybridQuery(query: string): Promise<void> {
 		const client = (this.plugin as any).client;
-		if (!client) return;
+		if (!client) return; // lex already shows the status message
 		this.hybridAbortController = new AbortController();
 		try {
 			const results = await client.searchHybrid(
@@ -166,6 +183,17 @@ export class QmdSearchView extends ItemView {
 		// Keyword matches section
 		if (this.lexResults.length > 0) {
 			this.renderSection("Keyword matches", this.lexResults, "keyword");
+		}
+
+		// Semantic search button (shown when there are lex results but no semantic results yet)
+		if (this.currentQuery && this.hybridResults.length === 0) {
+			this.semanticButton = this.resultsContainer.createEl("button", {
+				text: "Search semantically",
+				cls: "qmd-semantic-button",
+			});
+			this.semanticButton.addEventListener("click", () => {
+				this.triggerSemanticSearch();
+			});
 		}
 
 		// Semantic matches section
@@ -255,7 +283,6 @@ export class QmdSearchView extends ItemView {
 
 	private cancelPendingQueries(): void {
 		if (this.lexDebounceTimer) clearTimeout(this.lexDebounceTimer);
-		if (this.hybridDebounceTimer) clearTimeout(this.hybridDebounceTimer);
 		this.lexAbortController?.abort();
 		this.hybridAbortController?.abort();
 	}

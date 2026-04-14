@@ -122,6 +122,24 @@
 	margin-top: 2px;
 }
 
+.qmd-semantic-button {
+	display: block;
+	width: 100%;
+	padding: 8px;
+	margin: 8px 0;
+	border: 1px solid var(--interactive-accent);
+	border-radius: 4px;
+	background: transparent;
+	color: var(--interactive-accent);
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.qmd-semantic-button:hover {
+	background: var(--interactive-accent);
+	color: var(--background-primary);
+}
+
 .qmd-no-results {
 	text-align: center;
 	color: var(--text-muted);
