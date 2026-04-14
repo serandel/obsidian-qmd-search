@@ -24,9 +24,14 @@ export class QmdDaemonManager {
 
 			// Prepend the binary's directory to PATH so shell wrappers
 			// (e.g. qmd calling node) can find sibling binaries.
+			// Inside Flatpak, XDG_CACHE_HOME points to the sandbox cache
+			// dir, but qmd's index lives under the host's cache. Remove
+			// the sandbox override so qmd falls back to the XDG default
+			// ($HOME/.cache), which resolves to the host path.
 			const binDir = getBinDir(resolvedPath);
+			const { XDG_CACHE_HOME: _, ...baseEnv } = process.env as Record<string, string>;
 			const env = {
-				...process.env,
+				...baseEnv,
 				PATH: binDir + ":" + (process.env.PATH || ""),
 			};
 
@@ -71,9 +76,9 @@ export class QmdDaemonManager {
 			setTimeout(() => {
 				if (this.port === 0) {
 					proc.kill();
-					reject(new Error("QMD daemon did not report port within 10 seconds"));
+					reject(new Error("QMD daemon did not report port within 30 seconds"));
 				}
-			}, 10000);
+			}, 30000);
 		});
 	}
 
