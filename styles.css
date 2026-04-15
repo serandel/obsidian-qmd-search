@@ -140,6 +140,30 @@
 	color: var(--background-primary);
 }
 
+.qmd-spinner-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px;
+	color: var(--text-muted);
+	font-size: 13px;
+}
+
+.qmd-spinner {
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--background-modifier-border);
+	border-top-color: var(--interactive-accent);
+	border-radius: 50%;
+	animation: qmd-spin 0.6s linear infinite;
+}
+
+@keyframes qmd-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 .qmd-no-results {
 	text-align: center;
 	color: var(--text-muted);

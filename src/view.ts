@@ -17,6 +17,8 @@ export class QmdSearchView extends ItemView {
 	private currentQuery: string = "";
 	private errorMessage: string | null = null;
 	private semanticButton: HTMLButtonElement | null = null;
+	private lexLoading: boolean = false;
+	private hybridLoading: boolean = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: QmdPlugin) {
 		super(leaf);
@@ -110,6 +112,8 @@ export class QmdSearchView extends ItemView {
 			return;
 		}
 		this.lexAbortController = new AbortController();
+		this.lexLoading = true;
+		this.renderResults();
 		try {
 			const results = await client.searchLex(
 				query,
@@ -122,13 +126,14 @@ export class QmdSearchView extends ItemView {
 				result: r,
 				matchType: "keyword" as const,
 			}));
-			this.renderResults();
 		} catch (err) {
 			if ((err as Error).name !== "AbortError") {
 				console.error("[QMD] Lex query failed:", err);
 				this.errorMessage = "Search failed — is QMD running?";
-				this.renderResults();
 			}
+		} finally {
+			this.lexLoading = false;
+			this.renderResults();
 		}
 	}
 
@@ -136,6 +141,8 @@ export class QmdSearchView extends ItemView {
 		const client = (this.plugin as any).client;
 		if (!client) return; // lex already shows the status message
 		this.hybridAbortController = new AbortController();
+		this.hybridLoading = true;
+		this.renderResults();
 		try {
 			const results = await client.searchHybrid(
 				query,
@@ -148,13 +155,14 @@ export class QmdSearchView extends ItemView {
 				result: r,
 				matchType: "semantic" as const,
 			}));
-			this.renderResults();
 		} catch (err) {
 			if ((err as Error).name !== "AbortError") {
 				console.error("[QMD] Hybrid query failed:", err);
 				this.errorMessage = "Semantic search failed";
-				this.renderResults();
 			}
+		} finally {
+			this.hybridLoading = false;
+			this.renderResults();
 		}
 	}
 
@@ -170,23 +178,34 @@ export class QmdSearchView extends ItemView {
 			});
 		}
 
-		if (this.lexResults.length === 0 && this.hybridResults.length === 0) {
-			if (this.currentQuery && !this.errorMessage) {
-				this.resultsContainer.createEl("div", {
-					text: "No results found",
-					cls: "qmd-no-results",
-				});
-			}
-			return;
-		}
-
-		// Keyword matches section
-		if (this.lexResults.length > 0) {
+		// Keyword section: spinner or results
+		if (this.lexLoading) {
+			this.renderSpinner("Searching keywords…");
+		} else if (this.lexResults.length > 0) {
 			this.renderSection("Keyword matches", this.lexResults, "keyword");
 		}
 
-		// Semantic search button (shown when there are lex results but no semantic results yet)
-		if (this.currentQuery && this.hybridResults.length === 0) {
+		// No results message (above the semantic button)
+		if (
+			!this.lexLoading &&
+			!this.hybridLoading &&
+			this.lexResults.length === 0 &&
+			this.hybridResults.length === 0 &&
+			this.currentQuery &&
+			!this.errorMessage
+		) {
+			this.resultsContainer.createEl("div", {
+				text: "No results found",
+				cls: "qmd-no-results",
+			});
+		}
+
+		// Semantic section: spinner, button, or results
+		if (this.hybridLoading) {
+			this.renderSpinner("Searching semantically…");
+		} else if (this.hybridResults.length > 0) {
+			this.renderSection("Semantic matches", this.hybridResults, "semantic");
+		} else if (this.currentQuery && !this.lexLoading) {
 			this.semanticButton = this.resultsContainer.createEl("button", {
 				text: "Search semantically",
 				cls: "qmd-semantic-button",
@@ -195,11 +214,15 @@ export class QmdSearchView extends ItemView {
 				this.triggerSemanticSearch();
 			});
 		}
+	}
 
-		// Semantic matches section
-		if (this.hybridResults.length > 0) {
-			this.renderSection("Semantic matches", this.hybridResults, "semantic");
-		}
+	private renderSpinner(label: string): void {
+		if (!this.resultsContainer) return;
+		const wrapper = this.resultsContainer.createEl("div", {
+			cls: "qmd-spinner-wrapper",
+		});
+		wrapper.createEl("div", { cls: "qmd-spinner" });
+		wrapper.createEl("span", { text: label, cls: "qmd-spinner-label" });
 	}
 
 	private renderSection(
