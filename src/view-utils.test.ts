@@ -59,16 +59,16 @@ describe("extractVaultPath", () => {
 });
 
 describe("extractLineFromSnippet", () => {
-	it("extracts line number from standard diff header", () => {
-		expect(extractLineFromSnippet("@@ -6,4 @@\nsome content")).toBe(5); // 0-indexed
+	it("extracts best-match line from standard diff header", () => {
+		expect(extractLineFromSnippet("@@ -6,4 @@\nsome content")).toBe(6); // 0-indexed best match (start+1)
 	});
 
-	it("extracts line 1 (returns 0)", () => {
-		expect(extractLineFromSnippet("@@ -1,3 @@\nfirst line")).toBe(0);
+	it("extracts best-match line 1 (returns 1)", () => {
+		expect(extractLineFromSnippet("@@ -1,3 @@\nfirst line")).toBe(1);
 	});
 
 	it("handles large line numbers", () => {
-		expect(extractLineFromSnippet("@@ -1234,10 @@\ncontent")).toBe(1233);
+		expect(extractLineFromSnippet("@@ -1234,10 @@\ncontent")).toBe(1234);
 	});
 
 	it("returns null when no @@ header present", () => {
@@ -81,6 +81,18 @@ describe("extractLineFromSnippet", () => {
 
 	it("only matches @@ at the start of string", () => {
 		expect(extractLineFromSnippet("text @@ -6,4 @@")).toBeNull();
+	});
+
+	it("extracts best-match line from QMD output with line-number prefix", () => {
+		expect(
+			extractLineFromSnippet("1: @@ -1,3 @@ (0 before, 34 after)\n2: # Title")
+		).toBe(1);
+	});
+
+	it("extracts best-match line from QMD output with large line-number prefix", () => {
+		expect(
+			extractLineFromSnippet("55: @@ -54,4 @@ (53 before, 46 after)\n56: content")
+		).toBe(54);
 	});
 });
 

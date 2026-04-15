@@ -13,10 +13,11 @@ export function extractVaultPath(qmdFile: string): string | null {
 
 /** Extract 0-indexed line number from a diff-style snippet header. */
 export function extractLineFromSnippet(snippet: string): number | null {
-	// @@ -6,4 @@ (5 before, 2 after) → line 6
-	const match = snippet.match(/^@@ -(\d+)/);
+	// 1: @@ -6,4 @@ (5 before, 2 after) → best match line is 7 (start + 1)
+	// Also handles without line-number prefix: @@ -6,4 @@
+	const match = snippet.match(/^(?:\d+: )?@@ -(\d+)/);
 	if (match) {
-		return parseInt(match[1]!, 10) - 1; // 0-indexed
+		return parseInt(match[1]!, 10); // 0-indexed best match (start line + 1 - 1)
 	}
 	return null;
 }

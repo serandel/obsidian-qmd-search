@@ -251,6 +251,13 @@ export class QmdSearchView extends ItemView {
 				text: result.title || extractFilename(result.file),
 				cls: "qmd-result-title",
 			});
+			const line = extractLineFromSnippet(result.snippet);
+			if (line !== null) {
+				header.createEl("span", {
+					text: `:${line + 1}`,
+					cls: "qmd-result-line",
+				});
+			}
 			header.createEl("span", {
 				text: result.score.toFixed(2),
 				cls: `qmd-result-score qmd-score-${matchType}`,
