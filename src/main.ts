@@ -1,9 +1,12 @@
-import { Notice, Plugin } from "obsidian";
+import { addIcon, Notice, Plugin } from "obsidian";
 import { QmdSettingsTab } from "./settings";
 import { QmdDaemonManager } from "./daemon";
 import { QmdClient } from "./client";
 import { QmdSearchView, VIEW_TYPE_QMD_SEARCH } from "./view";
 import { DEFAULT_SETTINGS, type QmdSettings } from "./types";
+
+const QMD_ICON = "qmd-search";
+const QMD_ICON_SVG = `<circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" stroke-width="8"/><line x1="40" y1="52" x2="78" y2="84" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><line x1="36" y1="48" x2="68" y2="76" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>`;
 
 export default class QmdPlugin extends Plugin {
 	settings: QmdSettings = DEFAULT_SETTINGS;
@@ -15,13 +18,14 @@ export default class QmdPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
+		addIcon(QMD_ICON, QMD_ICON_SVG);
+
 		// Register view
 		this.registerView(VIEW_TYPE_QMD_SEARCH, (leaf) => new QmdSearchView(leaf, this));
 
-		// Ribbon icon to open search
-		this.addRibbonIcon("search", "QMD Search", async () => {
-			console.log("[QMD] Ribbon icon clicked");
-			await this.activateView();
+		// Activate view in left sidebar when layout is ready
+		this.app.workspace.onLayoutReady(() => {
+			this.activateView();
 		});
 
 		// Command to open search

@@ -34,7 +34,7 @@ export class QmdSearchView extends ItemView {
 	}
 
 	getIcon(): string {
-		return "search";
+		return "qmd-search";
 	}
 
 	async onOpen(): Promise<void> {
