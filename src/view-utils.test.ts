@@ -5,6 +5,7 @@ import {
 	extractLineFromSnippet,
 	extractPath,
 	extractVaultPath,
+	slugifyPath,
 } from "./view-utils";
 
 describe("extractVaultPath", () => {
@@ -38,6 +39,16 @@ describe("extractVaultPath", () => {
 
 	it("returns null for qmd URI with trailing slash only", () => {
 		expect(extractVaultPath("qmd://obsidian/")).toBeNull();
+	});
+
+	it("extracts path from plain collection/path format", () => {
+		expect(extractVaultPath("obsidian/notes/daily/2026-01-01.md")).toBe(
+			"notes/daily/2026-01-01.md"
+		);
+	});
+
+	it("extracts path from plain format with root-level file", () => {
+		expect(extractVaultPath("obsidian/readme.md")).toBe("readme.md");
 	});
 
 	it("preserves spaces in paths", () => {
@@ -148,5 +159,35 @@ describe("extractPath", () => {
 
 	it("handles deeply nested paths", () => {
 		expect(extractPath("qmd://obsidian/a/b/c/d/e.md")).toBe("a/b/c/d");
+	});
+});
+
+describe("slugifyPath", () => {
+	it("lowercases and replaces spaces with hyphens", () => {
+		expect(slugifyPath("! OLD notes to import/Notion/Cacas")).toBe(
+			"old-notes-to-import/notion/cacas"
+		);
+	});
+
+	it("collapses multiple special characters into a single hyphen", () => {
+		expect(slugifyPath("foo  --  bar/baz")).toBe("foo-bar/baz");
+	});
+
+	it("strips leading/trailing hyphens per segment", () => {
+		expect(slugifyPath("! hello !/world")).toBe("hello/world");
+	});
+
+	it("preserves dots in filenames", () => {
+		expect(slugifyPath("My Notes/2026-01-01.md")).toBe("my-notes/2026-01-01.md");
+	});
+
+	it("matches QMD slugification for real vault paths", () => {
+		expect(
+			slugifyPath(
+				"! OLD notes to import/notion/Cacas/Trabajo/LDA/pap gestor documental antifraude.md"
+			)
+		).toBe(
+			"old-notes-to-import/notion/cacas/trabajo/lda/pap-gestor-documental-antifraude.md"
+		);
 	});
 });

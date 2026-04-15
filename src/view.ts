@@ -1,7 +1,7 @@
-import { ItemView, TFile, WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
 import type QmdPlugin from "./main";
 import { type DisplayResult, type QmdSearchResult } from "./types";
-import { cleanSnippet, extractFilename, extractLineFromSnippet, extractPath, extractVaultPath } from "./view-utils";
+import { cleanSnippet, extractFilename, extractLineFromSnippet, extractPath, extractVaultPath, slugifyPath } from "./view-utils";
 
 export const VIEW_TYPE_QMD_SEARCH = "qmd-search-view";
 
@@ -282,10 +282,18 @@ export class QmdSearchView extends ItemView {
 
 	private async openResult(result: QmdSearchResult): Promise<void> {
 		const vaultPath = extractVaultPath(result.file);
-		if (!vaultPath) return;
+		if (!vaultPath) {
+			console.error("[QMD] Could not extract vault path from:", result.file);
+			new Notice(`QMD: Could not resolve file path: ${result.file}`);
+			return;
+		}
 
-		const file = this.app.vault.getAbstractFileByPath(vaultPath);
-		if (!(file instanceof TFile)) return;
+		const file = this.findVaultFile(vaultPath);
+		if (!file) {
+			console.error("[QMD] File not found in vault:", vaultPath);
+			new Notice(`QMD: File not found in vault: ${vaultPath}`);
+			return;
+		}
 
 		const leaf = this.app.workspace.getLeaf(false);
 		await leaf.openFile(file);
@@ -302,6 +310,19 @@ export class QmdSearchView extends ItemView {
 				);
 			}
 		}
+	}
+
+	/** Find a vault file by path, falling back to slug-based matching
+	 *  when QMD returns slugified paths that don't match the filesystem. */
+	private findVaultFile(vaultPath: string): TFile | null {
+		// Direct match first
+		const direct = this.app.vault.getAbstractFileByPath(vaultPath);
+		if (direct instanceof TFile) return direct;
+
+		// Slug-based fallback: compare slugified vault paths against the slugified QMD path
+		const slugTarget = slugifyPath(vaultPath);
+		const allFiles = this.app.vault.getFiles();
+		return allFiles.find((f) => slugifyPath(f.path) === slugTarget) ?? null;
 	}
 
 	private cancelPendingQueries(): void {

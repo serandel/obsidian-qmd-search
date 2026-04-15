@@ -1,8 +1,14 @@
-/** Extract vault-relative path from qmd:// URI. */
+/** Extract vault-relative path from a QMD file reference.
+ *  Handles both URI format (qmd://collection/path) and plain format (collection/path). */
 export function extractVaultPath(qmdFile: string): string | null {
 	// qmd://obsidian/path/to/note.md → path/to/note.md
-	const match = qmdFile.match(/^qmd:\/\/[^/]+\/(.+)$/);
-	return match?.[1] ?? null;
+	const uriMatch = qmdFile.match(/^qmd:\/\/[^/]+\/(.+)$/);
+	if (uriMatch) return uriMatch[1]!;
+
+	// obsidian/path/to/note.md → path/to/note.md
+	// Require the first segment to be a simple name (no colons, slashes, or protocol markers)
+	const plainMatch = qmdFile.match(/^[^/:]+\/(.+)$/);
+	return plainMatch?.[1] ?? null;
 }
 
 /** Extract 0-indexed line number from a diff-style snippet header. */
@@ -32,4 +38,17 @@ export function extractPath(file: string): string {
 	const parts = vaultPath.split("/");
 	parts.pop();
 	return parts.join("/") || "/";
+}
+
+/** Slugify a path the same way QMD does: lowercase, collapse non-alphanumeric runs to hyphens. */
+export function slugifyPath(path: string): string {
+	return path
+		.split("/")
+		.map((segment) =>
+			segment
+				.toLowerCase()
+				.replace(/[^a-z0-9.]+/g, "-")
+				.replace(/^-|-$/g, "")
+		)
+		.join("/");
 }
