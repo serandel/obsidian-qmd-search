@@ -209,7 +209,7 @@ export class QmdSearchView extends ItemView {
 			this.renderSpinner("Searching semantically…");
 		} else if (this.hybridResults.length > 0) {
 			this.renderSection("Semantic matches", this.hybridResults, "semantic");
-		} else if (this.currentQuery && !this.lexLoading) {
+		} else if (this.currentQuery) {
 			this.semanticButton = this.resultsContainer.createEl("button", {
 				text: "Search semantically",
 				cls: "qmd-semantic-button",
