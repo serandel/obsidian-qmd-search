@@ -87,6 +87,7 @@ export class QmdSearchView extends ItemView {
 		}
 
 		this.errorMessage = null;
+		this.lexResults = [];
 		this.semanticResults = [];
 		this.semanticTriggered = false;
 		this.semanticAbortController?.abort();
@@ -139,11 +140,15 @@ export class QmdSearchView extends ItemView {
 		} catch (err) {
 			if ((err as Error).name !== "AbortError") {
 				console.error("[QMD] Lex query failed:", err);
-				this.errorMessage = "Search failed — is QMD running?";
+				if (query === this.currentQuery) {
+					this.errorMessage = "Search failed — is QMD running?";
+				}
 			}
 		} finally {
-			this.lexLoading = false;
-			this.renderResults();
+			if (query === this.currentQuery) {
+				this.lexLoading = false;
+				this.renderResults();
+			}
 		}
 	}
 
@@ -168,11 +173,15 @@ export class QmdSearchView extends ItemView {
 		} catch (err) {
 			if ((err as Error).name !== "AbortError") {
 				console.error("[QMD] Hybrid query failed:", err);
-				this.errorMessage = "Semantic search failed";
+				if (query === this.currentQuery) {
+					this.errorMessage = "Semantic search failed";
+				}
 			}
 		} finally {
-			this.semanticLoading = false;
-			this.renderResults();
+			if (query === this.currentQuery) {
+				this.semanticLoading = false;
+				this.renderResults();
+			}
 		}
 	}
 
