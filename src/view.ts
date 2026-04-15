@@ -1,7 +1,7 @@
 import { ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
 import type QmdPlugin from "./main";
 import { type DisplayResult, type QmdSearchResult } from "./types";
-import { cleanSnippet, extractFilename, extractLineFromSnippet, extractPath, extractVaultPath, slugifyPath } from "./view-utils";
+import { cleanSnippet, extractFilename, findLineInContent, extractPath, extractVaultPath, slugifyPath } from "./view-utils";
 
 export const VIEW_TYPE_QMD_SEARCH = "qmd-search-view";
 
@@ -255,13 +255,6 @@ export class QmdSearchView extends ItemView {
 				text: result.title || extractFilename(result.file),
 				cls: "qmd-result-title",
 			});
-			const line = extractLineFromSnippet(result.snippet);
-			if (line !== null) {
-				header.createEl("span", {
-					text: `:${line + 1}`,
-					cls: "qmd-result-line",
-				});
-			}
 			header.createEl("span", {
 				text: result.score.toFixed(2),
 				cls: `qmd-result-score qmd-score-${matchType}`,
@@ -306,20 +299,23 @@ export class QmdSearchView extends ItemView {
 			return;
 		}
 
+		const content = await this.app.vault.cachedRead(file);
+		const line = findLineInContent(content, result.snippet);
+
 		const leaf = this.app.workspace.getLeaf(false);
 		await leaf.openFile(file);
 
-		// Try to scroll to matching line
-		const line = extractLineFromSnippet(result.snippet);
 		if (line !== null) {
-			const view = leaf.view as any;
-			if (view?.editor) {
-				view.editor.setCursor({ line, ch: 0 });
-				view.editor.scrollIntoView(
-					{ from: { line, ch: 0 }, to: { line, ch: 0 } },
-					true
-				);
-			}
+			setTimeout(() => {
+				const view = leaf.view as any;
+				if (view?.editor) {
+					view.editor.setCursor({ line, ch: 0 });
+					view.editor.scrollIntoView(
+						{ from: { line, ch: 0 }, to: { line, ch: 0 } },
+						true
+					);
+				}
+			}, 50);
 		}
 	}
 

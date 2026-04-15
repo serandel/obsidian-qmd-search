@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	cleanSnippet,
 	extractFilename,
-	extractLineFromSnippet,
+	extractSnippetFirstLine,
+	findLineInContent,
 	extractPath,
 	extractVaultPath,
 	slugifyPath,
@@ -58,41 +59,95 @@ describe("extractVaultPath", () => {
 	});
 });
 
-describe("extractLineFromSnippet", () => {
-	it("extracts best-match line from standard diff header", () => {
-		expect(extractLineFromSnippet("@@ -6,4 @@\nsome content")).toBe(6); // 0-indexed best match (start+1)
+describe("extractSnippetFirstLine", () => {
+	it("extracts first content line after @@ header", () => {
+		expect(extractSnippetFirstLine("@@ -6,4 @@\nsome content")).toBe(
+			"some content"
+		);
 	});
 
-	it("extracts best-match line 1 (returns 1)", () => {
-		expect(extractLineFromSnippet("@@ -1,3 @@\nfirst line")).toBe(1);
+	it("skips blank lines after header", () => {
+		expect(extractSnippetFirstLine("@@ -1,3 @@\n\nfirst real line")).toBe(
+			"first real line"
+		);
 	});
 
-	it("handles large line numbers", () => {
-		expect(extractLineFromSnippet("@@ -1234,10 @@\ncontent")).toBe(1234);
-	});
-
-	it("returns null when no @@ header present", () => {
-		expect(extractLineFromSnippet("just some text")).toBeNull();
-	});
-
-	it("returns null for empty string", () => {
-		expect(extractLineFromSnippet("")).toBeNull();
-	});
-
-	it("only matches @@ at the start of string", () => {
-		expect(extractLineFromSnippet("text @@ -6,4 @@")).toBeNull();
-	});
-
-	it("extracts best-match line from QMD output with line-number prefix", () => {
+	it("handles QMD line-number prefixes", () => {
 		expect(
-			extractLineFromSnippet("1: @@ -1,3 @@ (0 before, 34 after)\n2: # Title")
-		).toBe(1);
+			extractSnippetFirstLine(
+				"1: @@ -1,3 @@ (0 before, 34 after)\n2: # Title"
+			)
+		).toBe("# Title");
 	});
 
-	it("extracts best-match line from QMD output with large line-number prefix", () => {
+	it("returns null for empty snippet", () => {
+		expect(extractSnippetFirstLine("")).toBeNull();
+	});
+
+	it("returns null for header-only snippet", () => {
+		expect(extractSnippetFirstLine("@@ -6,4 @@\n")).toBeNull();
+	});
+
+	it("returns content from snippet without header", () => {
+		expect(extractSnippetFirstLine("just some text")).toBe("just some text");
+	});
+});
+
+describe("findLineInContent", () => {
+	const content = [
+		"---",
+		"title: My Note",
+		"---",
+		"",
+		"# Heading",
+		"",
+		"Some paragraph text here.",
+		"Another line.",
+	].join("\n");
+
+	it("finds the correct 0-indexed line for a snippet match", () => {
 		expect(
-			extractLineFromSnippet("55: @@ -54,4 @@ (53 before, 46 after)\n56: content")
-		).toBe(54);
+			findLineInContent(content, "@@ -3,2 @@\nSome paragraph text here.")
+		).toBe(6);
+	});
+
+	it("finds heading line", () => {
+		expect(findLineInContent(content, "@@ -1,2 @@\n# Heading")).toBe(4);
+	});
+
+	it("returns null when snippet content not found", () => {
+		expect(
+			findLineInContent(content, "@@ -1,2 @@\nNot in the file")
+		).toBeNull();
+	});
+
+	it("returns null for empty snippet", () => {
+		expect(findLineInContent(content, "")).toBeNull();
+	});
+
+	it("handles QMD line-number prefixes in snippet", () => {
+		expect(
+			findLineInContent(
+				content,
+				"4: @@ -3,2 @@ (2 before, 5 after)\n5: Some paragraph text here."
+			)
+		).toBe(6);
+	});
+
+	it("matches when QMD truncates long lines with ...", () => {
+		const longContent = [
+			"---",
+			"title: Test",
+			"---",
+			"",
+			"This is a very long line that goes on and on with lots of words and content that QMD will truncate",
+		].join("\n");
+		expect(
+			findLineInContent(
+				longContent,
+				"@@ -1,2 @@\nThis is a very long line that goes on and on ..."
+			)
+		).toBe(4);
 	});
 });
 

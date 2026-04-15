@@ -11,13 +11,27 @@ export function extractVaultPath(qmdFile: string): string | null {
 	return plainMatch?.[1] ?? null;
 }
 
-/** Extract 0-indexed line number from a diff-style snippet header. */
-export function extractLineFromSnippet(snippet: string): number | null {
-	// 1: @@ -6,4 @@ (5 before, 2 after) → best match line is 7 (start + 1)
-	// Also handles without line-number prefix: @@ -6,4 @@
-	const match = snippet.match(/^(?:\d+: )?@@ -(\d+)/);
-	if (match) {
-		return parseInt(match[1]!, 10); // 0-indexed best match (start line + 1 - 1)
+/** Extract the first content line from a snippet (after the @@ header). */
+export function extractSnippetFirstLine(snippet: string): string | null {
+	const cleaned = snippet.replace(/^\d+: /gm, "").replace(/^@@[^\n]*\n/, "");
+	// Skip blank lines, return the first non-empty line
+	for (const line of cleaned.split("\n")) {
+		const trimmed = line.trim();
+		if (trimmed) return trimmed;
+	}
+	return null;
+}
+
+/** Find the 0-indexed line number of a snippet's content within file content. */
+export function findLineInContent(content: string, snippet: string): number | null {
+	let needle = extractSnippetFirstLine(snippet);
+	if (!needle) return null;
+	// QMD truncates long lines with " ..." — strip it so we can match the real content
+	needle = needle.replace(/\s*\.{3,}$/, "");
+	if (!needle) return null;
+	const lines = content.split("\n");
+	for (let i = 0; i < lines.length; i++) {
+		if (lines[i]!.includes(needle)) return i;
 	}
 	return null;
 }
