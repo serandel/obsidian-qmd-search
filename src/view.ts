@@ -200,7 +200,10 @@ export class QmdSearchView extends ItemView {
 				cls: "qmd-section-chevron",
 				text: "›",
 			});
-			keywordHeader.createSpan({ text: "Keyword matches" });
+			const keywordLabel = this.lexLoading
+				? "Keyword matches"
+				: `Keyword matches (${this.lexResults.length})`;
+			keywordHeader.createSpan({ text: keywordLabel });
 			keywordHeader.addEventListener("click", () => {
 				this.keywordCollapsed = !this.keywordCollapsed;
 				section.toggleClass("is-collapsed", this.keywordCollapsed);
@@ -230,7 +233,10 @@ export class QmdSearchView extends ItemView {
 				cls: "qmd-section-chevron",
 				text: "›",
 			});
-			semanticHeader.createSpan({ text: "Semantic matches" });
+			const semanticLabel = this.semanticLoading
+				? "Semantic matches"
+				: `Semantic matches (${this.semanticResults.length})`;
+			semanticHeader.createSpan({ text: semanticLabel });
 			semanticHeader.addEventListener("click", () => {
 				this.semanticCollapsed = !this.semanticCollapsed;
 				section.toggleClass("is-collapsed", this.semanticCollapsed);
