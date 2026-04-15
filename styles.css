@@ -39,6 +39,26 @@
 	padding: 4px 0;
 	margin-bottom: 4px;
 	font-weight: 600;
+	cursor: pointer;
+	user-select: none;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.qmd-section-chevron {
+	display: inline-block;
+	transition: transform 0.15s ease;
+	transform: rotate(90deg);
+	font-size: 13px;
+}
+
+.qmd-section.is-collapsed .qmd-section-chevron {
+	transform: rotate(0deg);
+}
+
+.qmd-section.is-collapsed > :not(.qmd-section-header) {
+	display: none;
 }
 
 .qmd-section-keyword .qmd-section-header {
