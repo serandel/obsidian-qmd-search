@@ -21,6 +21,8 @@ export class QmdSearchView extends ItemView {
 	private lexLoading: boolean = false;
 	private semanticLoading: boolean = false;
 	private semanticTriggered: boolean = false;
+	private keywordCollapsed: boolean = false;
+	private semanticCollapsed: boolean = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: QmdPlugin) {
 		super(leaf);
@@ -189,7 +191,7 @@ export class QmdSearchView extends ItemView {
 		// Keyword section: always show header when there's a query
 		if (this.currentQuery && !this.errorMessage) {
 			const section = this.resultsContainer.createEl("div", {
-				cls: "qmd-section qmd-section-keyword",
+				cls: `qmd-section qmd-section-keyword${this.keywordCollapsed ? " is-collapsed" : ""}`,
 			});
 			const keywordHeader = section.createEl("div", {
 				cls: "qmd-section-header",
@@ -200,10 +202,8 @@ export class QmdSearchView extends ItemView {
 			});
 			keywordHeader.createSpan({ text: "Keyword matches" });
 			keywordHeader.addEventListener("click", () => {
-				section.toggleClass(
-					"is-collapsed",
-					!section.hasClass("is-collapsed")
-				);
+				this.keywordCollapsed = !this.keywordCollapsed;
+				section.toggleClass("is-collapsed", this.keywordCollapsed);
 			});
 
 			if (this.lexLoading) {
@@ -221,7 +221,7 @@ export class QmdSearchView extends ItemView {
 		// Semantic section: button, or header with spinner/results/no-results
 		if (this.semanticTriggered && this.currentQuery && !this.errorMessage) {
 			const section = this.resultsContainer.createEl("div", {
-				cls: "qmd-section qmd-section-semantic",
+				cls: `qmd-section qmd-section-semantic${this.semanticCollapsed ? " is-collapsed" : ""}`,
 			});
 			const semanticHeader = section.createEl("div", {
 				cls: "qmd-section-header",
@@ -232,10 +232,8 @@ export class QmdSearchView extends ItemView {
 			});
 			semanticHeader.createSpan({ text: "Semantic matches" });
 			semanticHeader.addEventListener("click", () => {
-				section.toggleClass(
-					"is-collapsed",
-					!section.hasClass("is-collapsed")
-				);
+				this.semanticCollapsed = !this.semanticCollapsed;
+				section.toggleClass("is-collapsed", this.semanticCollapsed);
 			});
 
 			if (this.semanticLoading) {
