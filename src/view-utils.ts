@@ -21,9 +21,12 @@ export function extractLineFromSnippet(snippet: string): number | null {
 	return null;
 }
 
-/** Remove the @@ header line from a snippet. */
+/** Remove line-number prefixes and the @@ header line from a snippet. */
 export function cleanSnippet(snippet: string): string {
-	return snippet.replace(/^@@[^\n]*\n/, "").trim();
+	return snippet
+		.replace(/^\d+: /gm, "")
+		.replace(/^@@[^\n]*\n/, "")
+		.trim();
 }
 
 /** Extract a readable filename (without .md) from a path. */

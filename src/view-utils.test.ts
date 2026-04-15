@@ -114,6 +114,22 @@ describe("cleanSnippet", () => {
 			"content"
 		);
 	});
+
+	it("strips line-number prefixes from QMD output", () => {
+		expect(
+			cleanSnippet(
+				"1: @@ -1,3 @@ (0 before, 34 after)\n2: # My Title\n3: \n4: Some content here"
+			)
+		).toBe("# My Title\n\nSome content here");
+	});
+
+	it("strips line-number prefixes with large numbers", () => {
+		expect(
+			cleanSnippet(
+				"55: @@ -54,4 @@ (53 before, 46 after)\n56: First line\n57: Second line\n58: Third line"
+			)
+		).toBe("First line\nSecond line\nThird line");
+	});
 });
 
 describe("extractFilename", () => {
