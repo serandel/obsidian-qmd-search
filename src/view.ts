@@ -15,6 +15,7 @@ export class QmdSearchView extends ItemView {
 	private lexAbortController: AbortController | null = null;
 	private hybridAbortController: AbortController | null = null;
 	private currentQuery: string = "";
+	private lastFiredLexQuery: string = "";
 	private errorMessage: string | null = null;
 	private semanticButton: HTMLButtonElement | null = null;
 	private lexLoading: boolean = false;
@@ -75,6 +76,7 @@ export class QmdSearchView extends ItemView {
 		if (!this.currentQuery) {
 			this.lexResults = [];
 			this.hybridResults = [];
+			this.lastFiredLexQuery = "";
 			this.renderResults();
 			this.cancelPendingQueries();
 			return;
@@ -88,8 +90,10 @@ export class QmdSearchView extends ItemView {
 		if (this.lexDebounceTimer) clearTimeout(this.lexDebounceTimer);
 		this.lexAbortController?.abort();
 		this.lexDebounceTimer = setTimeout(() => {
+			if (this.currentQuery === this.lastFiredLexQuery) return;
+			this.lastFiredLexQuery = this.currentQuery;
 			this.fireLexQuery(this.currentQuery);
-		}, 150);
+		}, 300);
 	}
 
 	private triggerSemanticSearch(): void {
