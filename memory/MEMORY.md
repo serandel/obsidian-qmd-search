@@ -1,5 +1,5 @@
 - [Commit and push at meaningful changesets](feedback_commit_push.md) — batch changes, commit+push only when approved
-- [Commit after user confirms](feedback_commit_after_confirm.md) — commit immediately when user says a change works
+- [Commit after completing changes](feedback_commit_after_confirm.md) — commit immediately after code change + passing build/tests
 - [No feature branches](feedback_no_branches.md) — solo project, work directly on main
 - [Rebuild before testing](feedback_rebuild_before_test.md) — always `npm run build` before asking user to test
 - [Write memory to repo path](feedback_memory_path.md) — use repo's `memory/` dir, not `~/.claude/projects/`

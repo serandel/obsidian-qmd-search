@@ -182,31 +182,31 @@ export class QmdSearchView extends ItemView {
 			});
 		}
 
-		// Keyword section: spinner or results
-		if (this.lexLoading) {
-			this.renderSpinner("Searching keywords…");
-		} else if (this.lexResults.length > 0) {
-			this.renderSection("Keyword matches", this.lexResults, "keyword");
-		}
-
-		// No results message (above the semantic button)
-		if (
-			!this.lexLoading &&
-			!this.hybridLoading &&
-			this.lexResults.length === 0 &&
-			this.hybridResults.length === 0 &&
-			this.currentQuery &&
-			!this.errorMessage
-		) {
-			this.resultsContainer.createEl("div", {
-				text: "No results found",
-				cls: "qmd-no-results",
+		// Keyword section: always show header when there's a query
+		if (this.currentQuery && !this.errorMessage) {
+			const section = this.resultsContainer.createEl("div", {
+				cls: "qmd-section qmd-section-keyword",
 			});
+			section.createEl("div", {
+				text: "Keyword matches",
+				cls: "qmd-section-header",
+			});
+
+			if (this.lexLoading) {
+				this.renderSpinnerInto(section, "Searching keywords…");
+			} else if (this.lexResults.length > 0) {
+				this.renderResultsInto(section, this.lexResults);
+			} else {
+				section.createEl("div", {
+					text: "No results found",
+					cls: "qmd-no-results",
+				});
+			}
 		}
 
 		// Semantic section: spinner, button, or results
 		if (this.hybridLoading) {
-			this.renderSpinner("Searching semantically…");
+			this.renderSpinnerInto(this.resultsContainer!, "Searching semantically…");
 		} else if (this.hybridResults.length > 0) {
 			this.renderSection("Semantic matches", this.hybridResults, "semantic");
 		} else if (this.currentQuery) {
@@ -220,33 +220,21 @@ export class QmdSearchView extends ItemView {
 		}
 	}
 
-	private renderSpinner(label: string): void {
-		if (!this.resultsContainer) return;
-		const wrapper = this.resultsContainer.createEl("div", {
+	private renderSpinnerInto(parent: HTMLElement, label: string): void {
+		const wrapper = parent.createEl("div", {
 			cls: "qmd-spinner-wrapper",
 		});
 		wrapper.createEl("div", { cls: "qmd-spinner" });
 		wrapper.createEl("span", { text: label, cls: "qmd-spinner-label" });
 	}
 
-	private renderSection(
-		title: string,
+	private renderResultsInto(
+		parent: HTMLElement,
 		results: DisplayResult[],
-		matchType: string
+		matchType?: string
 	): void {
-		if (!this.resultsContainer) return;
-
-		const section = this.resultsContainer.createEl("div", {
-			cls: `qmd-section qmd-section-${matchType}`,
-		});
-
-		section.createEl("div", {
-			text: title,
-			cls: "qmd-section-header",
-		});
-
 		for (const { result } of results) {
-			const item = section.createEl("div", {
+			const item = parent.createEl("div", {
 				cls: "qmd-result-item",
 			});
 
@@ -257,7 +245,7 @@ export class QmdSearchView extends ItemView {
 			});
 			header.createEl("span", {
 				text: result.score.toFixed(2),
-				cls: `qmd-result-score qmd-score-${matchType}`,
+				cls: `qmd-result-score qmd-score-${matchType ?? "keyword"}`,
 			});
 
 			// Snippet
@@ -282,6 +270,25 @@ export class QmdSearchView extends ItemView {
 				this.openResult(result);
 			});
 		}
+	}
+
+	private renderSection(
+		title: string,
+		results: DisplayResult[],
+		matchType: string
+	): void {
+		if (!this.resultsContainer) return;
+
+		const section = this.resultsContainer.createEl("div", {
+			cls: `qmd-section qmd-section-${matchType}`,
+		});
+
+		section.createEl("div", {
+			text: title,
+			cls: "qmd-section-header",
+		});
+
+		this.renderResultsInto(section, results, matchType);
 	}
 
 	private async openResult(result: QmdSearchResult): Promise<void> {
