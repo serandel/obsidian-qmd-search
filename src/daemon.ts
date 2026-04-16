@@ -84,7 +84,7 @@ export class QmdDaemonManager {
 
 	async warmup(client: QmdClient, collection: string): Promise<void> {
 		try {
-			await client.searchHybrid("warmup", collection, 1);
+			await client.searchSemantic("warmup", collection, 1);
 		} catch {
 			console.warn("[QMD] Warmup query failed — models may load on first real query");
 		}

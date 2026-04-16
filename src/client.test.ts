@@ -105,15 +105,15 @@ describe("QmdClient", () => {
 		});
 	});
 
-	describe("searchHybrid", () => {
-		it("sends expand type in query", async () => {
+	describe("searchSemantic", () => {
+		it("sends vec type in query", async () => {
 			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
 
-			await client().searchHybrid("semantic query", "my-collection", 5);
+			await client().searchSemantic("semantic query", "my-collection", 5);
 
 			const body = JSON.parse(lastRequest.body);
 			expect(body).toEqual({
-				searches: [{ type: "expand", query: "semantic query" }],
+				searches: [{ type: "vec", query: "semantic query" }],
 				collections: ["my-collection"],
 				limit: 5,
 			});
@@ -122,7 +122,7 @@ describe("QmdClient", () => {
 		it("returns parsed results", async () => {
 			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
 
-			const results = await client().searchHybrid("test", "obsidian", 10);
+			const results = await client().searchSemantic("test", "obsidian", 10);
 			expect(results).toEqual(mockResults);
 		});
 	});

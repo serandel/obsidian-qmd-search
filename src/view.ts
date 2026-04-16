@@ -159,7 +159,7 @@ export class QmdSearchView extends ItemView {
 		this.semanticLoading = true;
 		this.renderResults();
 		try {
-			const results = await client.searchHybrid(
+			const results = await client.searchSemantic(
 				query,
 				this.plugin.settings.collection,
 				this.plugin.settings.maxResults,
