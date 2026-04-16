@@ -105,15 +105,18 @@ describe("QmdClient", () => {
 		});
 	});
 
-	describe("searchSemantic", () => {
-		it("sends vec type in query", async () => {
+	describe("searchHybrid", () => {
+		it("sends both lex and vec types in query", async () => {
 			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
 
-			await client().searchSemantic("semantic query", "my-collection", 5);
+			await client().searchHybrid("hybrid query", "my-collection", 5);
 
 			const body = JSON.parse(lastRequest.body);
 			expect(body).toEqual({
-				searches: [{ type: "vec", query: "semantic query" }],
+				searches: [
+					{ type: "lex", query: "hybrid query" },
+					{ type: "vec", query: "hybrid query" },
+				],
 				collections: ["my-collection"],
 				limit: 5,
 			});
@@ -122,7 +125,7 @@ describe("QmdClient", () => {
 		it("returns parsed results", async () => {
 			serverResponse = { status: 200, body: JSON.stringify(mockResults) };
 
-			const results = await client().searchSemantic("test", "obsidian", 10);
+			const results = await client().searchHybrid("test", "obsidian", 10);
 			expect(results).toEqual(mockResults);
 		});
 	});

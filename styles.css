@@ -39,33 +39,17 @@
 	padding: 4px 0;
 	margin-bottom: 4px;
 	font-weight: 600;
-	cursor: pointer;
 	user-select: none;
 	display: flex;
 	align-items: center;
 	gap: 4px;
 }
 
-.qmd-section-chevron {
-	display: inline-block;
-	transition: transform 0.15s ease;
-	transform: rotate(90deg);
-	font-size: 13px;
-}
-
-.qmd-section.is-collapsed .qmd-section-chevron {
-	transform: rotate(0deg);
-}
-
-.qmd-section.is-collapsed > :not(.qmd-section-header) {
-	display: none;
-}
-
 .qmd-section-keyword .qmd-section-header {
 	color: var(--text-accent);
 }
 
-.qmd-section-semantic .qmd-section-header {
+.qmd-section-hybrid .qmd-section-header {
 	color: var(--interactive-accent);
 }
 
@@ -117,7 +101,7 @@
 	color: var(--background-primary);
 }
 
-.qmd-score-semantic {
+.qmd-score-hybrid {
 	background: var(--interactive-accent);
 	color: var(--background-primary);
 }
@@ -139,7 +123,7 @@
 	border-left-color: var(--text-accent);
 }
 
-.qmd-section-semantic .qmd-result-snippet {
+.qmd-section-hybrid .qmd-result-snippet {
 	border-left-color: var(--interactive-accent);
 }
 
@@ -151,7 +135,7 @@
 	word-break: break-all;
 }
 
-.qmd-semantic-button {
+.qmd-hybrid-button {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -168,7 +152,7 @@
 	cursor: pointer;
 }
 
-.qmd-semantic-button:hover {
+.qmd-hybrid-button:hover {
 	background: var(--interactive-accent);
 	color: var(--background-primary);
 }

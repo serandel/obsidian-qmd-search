@@ -32,7 +32,7 @@ export class QmdClient {
 		);
 	}
 
-	async searchSemantic(
+	async searchHybrid(
 		query: string,
 		collection: string,
 		limit: number,
@@ -40,7 +40,10 @@ export class QmdClient {
 	): Promise<QmdSearchResult[]> {
 		return this.doQuery(
 			{
-				searches: [{ type: "vec", query }],
+				searches: [
+					{ type: "lex", query },
+					{ type: "vec", query },
+				],
 				collections: [collection],
 				limit,
 			},

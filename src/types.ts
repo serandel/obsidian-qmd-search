@@ -23,7 +23,7 @@ export interface QmdSearchResult {
 	snippet: string;
 }
 
-export type MatchType = "keyword" | "semantic";
+export type MatchType = "keyword" | "hybrid";
 
 export interface DisplayResult {
 	result: QmdSearchResult;

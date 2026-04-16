@@ -1,6 +1,6 @@
 import { ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
 import type QmdPlugin from "./main";
-import { type DisplayResult, type QmdSearchResult } from "./types";
+import { type DisplayResult, type MatchType, type QmdSearchResult } from "./types";
 import { cleanSnippet, extractFilename, findLineInContent, extractPath, extractVaultPath, slugifyPath } from "./view-utils";
 
 export const VIEW_TYPE_QMD_SEARCH = "qmd-search-view";
@@ -9,20 +9,18 @@ export class QmdSearchView extends ItemView {
 	plugin: QmdPlugin;
 	private searchInput: HTMLInputElement | null = null;
 	private resultsContainer: HTMLElement | null = null;
-	private lexResults: DisplayResult[] = [];
-	private semanticResults: DisplayResult[] = [];
+	private results: DisplayResult[] = [];
+	private matchType: MatchType = "keyword";
 	private lexDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	private lexAbortController: AbortController | null = null;
-	private semanticAbortController: AbortController | null = null;
+	private hybridAbortController: AbortController | null = null;
 	private currentQuery: string = "";
 	private lastFiredLexQuery: string = "";
 	private errorMessage: string | null = null;
-	private semanticButton: HTMLButtonElement | null = null;
+	private hybridButton: HTMLButtonElement | null = null;
 	private lexLoading: boolean = false;
-	private semanticLoading: boolean = false;
-	private semanticTriggered: boolean = false;
-	private keywordCollapsed: boolean = false;
-	private semanticCollapsed: boolean = false;
+	private hybridLoading: boolean = false;
+	private hybridTriggered: boolean = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: QmdPlugin) {
 		super(leaf);
@@ -59,7 +57,7 @@ export class QmdSearchView extends ItemView {
 
 		this.searchInput.addEventListener("keydown", (e) => {
 			if (e.key === "Enter") {
-				this.triggerSemanticSearch();
+				this.triggerHybridSearch();
 			}
 		});
 
@@ -77,9 +75,9 @@ export class QmdSearchView extends ItemView {
 		this.currentQuery = query.trim();
 
 		if (!this.currentQuery) {
-			this.lexResults = [];
-			this.semanticResults = [];
-			this.semanticTriggered = false;
+			this.results = [];
+			this.matchType = "keyword";
+			this.hybridTriggered = false;
 			this.lastFiredLexQuery = "";
 			this.renderResults();
 			this.cancelPendingQueries();
@@ -87,10 +85,10 @@ export class QmdSearchView extends ItemView {
 		}
 
 		this.errorMessage = null;
-		this.lexResults = [];
-		this.semanticResults = [];
-		this.semanticTriggered = false;
-		this.semanticAbortController?.abort();
+		this.results = [];
+		this.matchType = "keyword";
+		this.hybridTriggered = false;
+		this.hybridAbortController?.abort();
 
 		// Debounced BM25 query (fast)
 		if (this.lexDebounceTimer) clearTimeout(this.lexDebounceTimer);
@@ -102,13 +100,13 @@ export class QmdSearchView extends ItemView {
 		}, 300);
 	}
 
-	private triggerSemanticSearch(): void {
-		if (!this.currentQuery || this.semanticTriggered) return;
-		this.semanticTriggered = true;
-		this.semanticAbortController?.abort();
-		this.semanticButton?.remove();
-		this.semanticButton = null;
-		this.fireSemanticQuery(this.currentQuery);
+	private triggerHybridSearch(): void {
+		if (!this.currentQuery || this.hybridTriggered) return;
+		this.hybridTriggered = true;
+		this.hybridAbortController?.abort();
+		this.hybridButton?.remove();
+		this.hybridButton = null;
+		this.fireHybridQuery(this.currentQuery);
 	}
 
 	private async fireLexQuery(query: string): Promise<void> {
@@ -133,10 +131,11 @@ export class QmdSearchView extends ItemView {
 				this.lexAbortController.signal
 			);
 			if (query !== this.currentQuery) return; // stale
-			this.lexResults = results.map((r: QmdSearchResult) => ({
+			this.results = results.map((r: QmdSearchResult) => ({
 				result: r,
 				matchType: "keyword" as const,
 			}));
+			this.matchType = "keyword";
 		} catch (err) {
 			if ((err as Error).name !== "AbortError") {
 				console.error("[QMD] Lex query failed:", err);
@@ -152,34 +151,35 @@ export class QmdSearchView extends ItemView {
 		}
 	}
 
-	private async fireSemanticQuery(query: string): Promise<void> {
+	private async fireHybridQuery(query: string): Promise<void> {
 		const client = (this.plugin as any).client;
 		if (!client) return; // lex already shows the status message
-		this.semanticAbortController = new AbortController();
-		this.semanticLoading = true;
+		this.hybridAbortController = new AbortController();
+		this.hybridLoading = true;
 		this.renderResults();
 		try {
-			const results = await client.searchSemantic(
+			const results = await client.searchHybrid(
 				query,
 				this.plugin.settings.collection,
 				this.plugin.settings.maxResults,
-				this.semanticAbortController.signal
+				this.hybridAbortController.signal
 			);
 			if (query !== this.currentQuery) return; // stale
-			this.semanticResults = results.map((r: QmdSearchResult) => ({
+			this.results = results.map((r: QmdSearchResult) => ({
 				result: r,
-				matchType: "semantic" as const,
+				matchType: "hybrid" as const,
 			}));
+			this.matchType = "hybrid";
 		} catch (err) {
 			if ((err as Error).name !== "AbortError") {
 				console.error("[QMD] Hybrid query failed:", err);
 				if (query === this.currentQuery) {
-					this.errorMessage = "Semantic search failed";
+					this.errorMessage = "Hybrid search failed";
 				}
 			}
 		} finally {
 			if (query === this.currentQuery) {
-				this.semanticLoading = false;
+				this.hybridLoading = false;
 				this.renderResults();
 			}
 		}
@@ -197,32 +197,24 @@ export class QmdSearchView extends ItemView {
 			});
 		}
 
-		// Keyword section: always show header when there's a query
+		// Results section
 		if (this.currentQuery && !this.errorMessage) {
 			const section = this.resultsContainer.createEl("div", {
-				cls: `qmd-section qmd-section-keyword${this.keywordCollapsed ? " is-collapsed" : ""}`,
+				cls: `qmd-section qmd-section-${this.matchType}`,
 			});
-			const keywordHeader = section.createEl("div", {
+			const header = section.createEl("div", {
 				cls: "qmd-section-header",
-			});
-			keywordHeader.createEl("span", {
-				cls: "qmd-section-chevron",
-				text: "›",
-			});
-			const keywordLabel = this.lexLoading
-				? "Keyword matches"
-				: `Keyword matches (${this.lexResults.length})`;
-			keywordHeader.createSpan({ text: keywordLabel });
-			keywordHeader.addEventListener("click", () => {
-				this.keywordCollapsed = !this.keywordCollapsed;
-				section.toggleClass("is-collapsed", this.keywordCollapsed);
 			});
 
 			if (this.lexLoading) {
+				header.createSpan({ text: "Keyword matches" });
 				this.renderSpinnerInto(section, "Searching keywords…");
-			} else if (this.lexResults.length > 0) {
-				this.renderResultsInto(section, this.lexResults);
+			} else if (this.results.length > 0) {
+				const label = `${this.matchType === "hybrid" ? "Matches" : "Keyword matches"} (${this.results.length})`;
+				header.createSpan({ text: label });
+				this.renderResultsInto(section, this.results, this.matchType);
 			} else {
+				header.createSpan({ text: "Keyword matches" });
 				section.createEl("div", {
 					text: "No results found",
 					cls: "qmd-no-results",
@@ -230,44 +222,19 @@ export class QmdSearchView extends ItemView {
 			}
 		}
 
-		// Semantic section: button, or header with spinner/results/no-results
-		if (this.semanticTriggered && this.currentQuery && !this.errorMessage) {
-			const section = this.resultsContainer.createEl("div", {
-				cls: `qmd-section qmd-section-semantic${this.semanticCollapsed ? " is-collapsed" : ""}`,
-			});
-			const semanticHeader = section.createEl("div", {
-				cls: "qmd-section-header",
-			});
-			semanticHeader.createEl("span", {
-				cls: "qmd-section-chevron",
-				text: "›",
-			});
-			const semanticLabel = this.semanticLoading
-				? "Semantic matches"
-				: `Semantic matches (${this.semanticResults.length})`;
-			semanticHeader.createSpan({ text: semanticLabel });
-			semanticHeader.addEventListener("click", () => {
-				this.semanticCollapsed = !this.semanticCollapsed;
-				section.toggleClass("is-collapsed", this.semanticCollapsed);
-			});
+		// Hybrid loading spinner (shown below keyword results)
+		if (this.hybridLoading) {
+			this.renderSpinnerInto(this.resultsContainer, "Searching semantically…");
+		}
 
-			if (this.semanticLoading) {
-				this.renderSpinnerInto(section, "Searching semantically…");
-			} else if (this.semanticResults.length > 0) {
-				this.renderResultsInto(section, this.semanticResults, "semantic");
-			} else {
-				section.createEl("div", {
-					text: "No results found",
-					cls: "qmd-no-results",
-				});
-			}
-		} else if (this.currentQuery && !this.errorMessage) {
-			this.semanticButton = this.resultsContainer.createEl("button", {
+		// Hybrid search button (only when showing keyword results and not already triggered)
+		if (this.currentQuery && !this.errorMessage && !this.hybridTriggered) {
+			this.hybridButton = this.resultsContainer.createEl("button", {
 				text: "Search semantically",
-				cls: "qmd-semantic-button",
+				cls: "qmd-hybrid-button",
 			});
-			this.semanticButton.addEventListener("click", () => {
-				this.triggerSemanticSearch();
+			this.hybridButton.addEventListener("click", () => {
+				this.triggerHybridSearch();
 			});
 		}
 	}
@@ -283,7 +250,7 @@ export class QmdSearchView extends ItemView {
 	private renderResultsInto(
 		parent: HTMLElement,
 		results: DisplayResult[],
-		matchType?: string
+		matchType: string
 	): void {
 		for (const { result } of results) {
 			const item = parent.createEl("div", {
@@ -297,7 +264,7 @@ export class QmdSearchView extends ItemView {
 			});
 			header.createEl("span", {
 				text: result.score.toFixed(2),
-				cls: `qmd-result-score qmd-score-${matchType ?? "keyword"}`,
+				cls: `qmd-result-score qmd-score-${matchType}`,
 			});
 
 			// Snippet
@@ -375,6 +342,6 @@ export class QmdSearchView extends ItemView {
 	private cancelPendingQueries(): void {
 		if (this.lexDebounceTimer) clearTimeout(this.lexDebounceTimer);
 		this.lexAbortController?.abort();
-		this.semanticAbortController?.abort();
+		this.hybridAbortController?.abort();
 	}
 }
