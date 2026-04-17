@@ -62,6 +62,11 @@ export class QmdSettingsTab extends PluginSettingTab {
 				toggle.setValue(this.plugin.settings.autoUpdate).onChange(async (value) => {
 					this.plugin.settings.autoUpdate = value;
 					await this.plugin.saveSettings();
+					if (value) {
+						this.plugin.registerFileWatcher();
+					} else {
+						this.plugin.unregisterFileWatcher();
+					}
 				})
 			);
 

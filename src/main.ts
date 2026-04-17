@@ -1,4 +1,4 @@
-import { addIcon, Notice, Plugin, type TAbstractFile } from "obsidian";
+import { addIcon, type EventRef, Notice, Plugin, type TAbstractFile } from "obsidian";
 import { QmdSettingsTab } from "./settings";
 import { QmdDaemonManager } from "./daemon";
 import { QmdClient } from "./client";
@@ -19,6 +19,7 @@ export default class QmdPlugin extends Plugin {
 	daemonError: string | null = null;
 	private statusBar: QmdStatusBar | null = null;
 	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	private fileWatcherRefs: EventRef[] = [];
 
 	async onload() {
 		await this.loadSettings();
@@ -94,7 +95,9 @@ export default class QmdPlugin extends Plugin {
 	private restartAttempts = 0;
 	private readonly MAX_RESTART_ATTEMPTS = 3;
 
-	private registerFileWatcher(): void {
+	registerFileWatcher(): void {
+		if (this.fileWatcherRefs.length > 0) return; // already registered
+
 		const handler = (_file: TAbstractFile) => {
 			if (this.debounceTimer) clearTimeout(this.debounceTimer);
 			this.debounceTimer = setTimeout(() => {
@@ -103,10 +106,26 @@ export default class QmdPlugin extends Plugin {
 			}, this.settings.debounceDelayMs);
 		};
 
-		this.registerEvent(this.app.vault.on("create", handler));
-		this.registerEvent(this.app.vault.on("modify", handler));
-		this.registerEvent(this.app.vault.on("delete", handler));
-		this.registerEvent(this.app.vault.on("rename", handler));
+		this.fileWatcherRefs.push(
+			this.app.vault.on("create", handler),
+			this.app.vault.on("modify", handler),
+			this.app.vault.on("delete", handler),
+			this.app.vault.on("rename", handler),
+		);
+		for (const ref of this.fileWatcherRefs) {
+			this.registerEvent(ref);
+		}
+	}
+
+	unregisterFileWatcher(): void {
+		for (const ref of this.fileWatcherRefs) {
+			this.app.vault.offref(ref);
+		}
+		this.fileWatcherRefs = [];
+		if (this.debounceTimer) {
+			clearTimeout(this.debounceTimer);
+			this.debounceTimer = null;
+		}
 	}
 
 	private async startDaemon(): Promise<void> {
