@@ -8,7 +8,7 @@ import { QmdSearchView, VIEW_TYPE_QMD_SEARCH } from "./view";
 import { DEFAULT_SETTINGS, type QmdSettings } from "./types";
 
 const QMD_ICON = "qmd-search";
-const QMD_ICON_SVG = `<circle cx="42" cy="44" r="28" fill="none" stroke="currentColor" stroke-width="6"/><line x1="34" y1="56" x2="76" y2="88" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>`;
+const QMD_ICON_SVG = `<circle cx="46" cy="46" r="33" fill="none" stroke="currentColor" stroke-width="6"/><line x1="52" y1="52" x2="88" y2="88" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>`;
 
 export default class QmdPlugin extends Plugin {
 	settings: QmdSettings = DEFAULT_SETTINGS;
