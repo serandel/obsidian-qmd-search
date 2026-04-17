@@ -1,3 +1,4 @@
+import { Menu } from "obsidian";
 import type { IndexerState } from "./types";
 
 export class QmdStatusBar {
@@ -7,6 +8,17 @@ export class QmdStatusBar {
 
 	constructor(private el: HTMLElement) {
 		this.el.addClass("qmd-status-bar");
+		this.el.addEventListener("contextmenu", (e) => {
+			e.preventDefault();
+			const menu = new Menu();
+			menu.addItem((item) =>
+				item
+					.setTitle("Settings")
+					.setIcon("settings")
+					.onClick(() => this.openSettings?.())
+			);
+			menu.showAtMouseEvent(e);
+		});
 		this.update({ phase: "idle" });
 	}
 
