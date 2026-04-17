@@ -4,6 +4,7 @@ export interface QmdSettings {
 	port: number;
 	collection: string;
 	maxResults: number;
+	autoIndexOnStartup: boolean;
 	autoUpdate: boolean;
 	debounceDelayMs: number;
 	niceLevel: number;
@@ -15,6 +16,7 @@ export const DEFAULT_SETTINGS: QmdSettings = {
 	port: 0, // 0 = auto-assigned by daemon
 	collection: "obsidian",
 	maxResults: 20,
+	autoIndexOnStartup: true,
 	autoUpdate: true,
 	debounceDelayMs: 5000,
 	niceLevel: 10,

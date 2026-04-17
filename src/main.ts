@@ -153,9 +153,13 @@ export default class QmdPlugin extends Plugin {
 
 			// Async warmup — don't block. Run initial index update after warmup
 			// completes so they don't compete for GPU resources.
-			this.daemon.warmup(this.client, this.settings.collection)
-				.then(() => this.indexer?.requestUpdate())
-				.catch(() => this.indexer?.requestUpdate());
+			if (this.settings.autoIndexOnStartup) {
+				this.daemon.warmup(this.client, this.settings.collection)
+					.then(() => this.indexer?.requestUpdate())
+					.catch(() => this.indexer?.requestUpdate());
+			} else {
+				this.daemon.warmup(this.client, this.settings.collection).catch(() => {});
+			}
 
 			console.log(`[QMD] Daemon started on port ${port}`);
 		} catch (err) {

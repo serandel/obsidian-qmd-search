@@ -56,6 +56,16 @@ export class QmdSettingsTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName("Index on startup")
+			.setDesc("Automatically run indexing and embeddings when Obsidian starts")
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.autoIndexOnStartup).onChange(async (value) => {
+					this.plugin.settings.autoIndexOnStartup = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
 			.setName("Auto-update index")
 			.setDesc("Automatically update the QMD index when files change in the vault")
 			.addToggle((toggle) =>
@@ -67,6 +77,15 @@ export class QmdSettingsTab extends PluginSettingTab {
 					} else {
 						this.plugin.unregisterFileWatcher();
 					}
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("Run indexing now")
+			.setDesc("Manually trigger index update and embedding generation")
+			.addButton((button) =>
+				button.setButtonText("Index now").onClick(() => {
+					this.plugin.indexer?.requestUpdate();
 				})
 			);
 
