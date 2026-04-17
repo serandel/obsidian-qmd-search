@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from "child_process";
+import { type ChildProcess, execFileSync, spawn } from "child_process";
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import { setPriority } from "os";
@@ -122,18 +122,13 @@ export class QmdDaemonManager {
 				return;
 			}
 
-			let cmdline = "";
-			try {
-				cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf-8");
-			} catch {
+			if (!isQmdProcess(pid)) {
 				this.removePidFile();
 				return;
 			}
 
-			if (cmdline.includes("qmd")) {
-				process.kill(pid, "SIGTERM");
-				console.log(`[QMD] Killed orphaned daemon (PID ${pid})`);
-			}
+			process.kill(pid, "SIGTERM");
+			console.log(`[QMD] Killed orphaned daemon (PID ${pid})`);
 		} catch {
 			// Process doesn't exist or can't be killed
 		}
@@ -156,5 +151,34 @@ export class QmdDaemonManager {
 		} catch {
 			// Ignore
 		}
+	}
+}
+
+/**
+ * Check whether a given PID corresponds to a QMD process.
+ * Uses platform-specific mechanisms to read the process command line.
+ */
+function isQmdProcess(pid: number): boolean {
+	try {
+		if (process.platform === "win32") {
+			const output = execFileSync(
+				"tasklist",
+				["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"],
+				{ encoding: "utf-8", timeout: 5000 }
+			);
+			return output.toLowerCase().includes("qmd");
+		} else if (process.platform === "linux") {
+			const cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf-8");
+			return cmdline.includes("qmd");
+		} else {
+			// macOS and other Unix
+			const output = execFileSync("ps", ["-p", String(pid), "-o", "comm="], {
+				encoding: "utf-8",
+				timeout: 5000,
+			});
+			return output.toLowerCase().includes("qmd");
+		}
+	} catch {
+		return false;
 	}
 }

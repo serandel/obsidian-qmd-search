@@ -92,7 +92,7 @@ export class QmdSettingsTab extends PluginSettingTab {
 
 		new Setting(advancedDetails)
 			.setName("Process priority (nice level)")
-			.setDesc("Lower CPU priority for QMD processes (0 = normal, 19 = lowest). Reduces system sluggishness during searches and indexing.")
+			.setDesc("Lower CPU priority for QMD processes (0 = normal, 19 = lowest). Reduces system sluggishness during indexing. On Windows, maps to priority classes with fewer distinct levels.")
 			.addSlider((slider) =>
 				slider
 					.setLimits(0, 19, 1)

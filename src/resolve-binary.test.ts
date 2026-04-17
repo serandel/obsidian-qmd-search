@@ -1,8 +1,9 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { resolveBinaryPath, getBinDir } from "./resolve-binary";
+import { describe, expect, it } from "vitest";
+import { delimiter } from "path";
+import { resolveBinaryPath, getBinDir, buildQmdEnv } from "./resolve-binary";
 
 describe("resolveBinaryPath", () => {
-	it("returns absolute paths unchanged", () => {
+	it("returns absolute Unix paths unchanged", () => {
 		expect(resolveBinaryPath("/usr/bin/qmd")).toBe("/usr/bin/qmd");
 	});
 
@@ -36,7 +37,33 @@ describe("getBinDir", () => {
 		expect(getBinDir("/usr/local/bin/node")).toBe("/usr/local/bin");
 	});
 
-	it("returns empty string for root-level binary", () => {
-		expect(getBinDir("/qmd")).toBe("");
+	it("returns root for root-level binary", () => {
+		expect(getBinDir("/qmd")).toBe("/");
+	});
+});
+
+describe("buildQmdEnv", () => {
+	it("prepends binary directory to PATH using platform delimiter", () => {
+		const env = buildQmdEnv("/usr/local/bin/qmd");
+		expect(env.PATH).toMatch(new RegExp(`^/usr/local/bin\\${delimiter}`));
+	});
+
+	it("strips XDG overrides on non-Windows platforms", () => {
+		const origCache = process.env.XDG_CACHE_HOME;
+		const origConfig = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CACHE_HOME = "/tmp/cache";
+		process.env.XDG_CONFIG_HOME = "/tmp/config";
+		try {
+			const env = buildQmdEnv("/usr/local/bin/qmd");
+			if (process.platform !== "win32") {
+				expect(env.XDG_CACHE_HOME).toBeUndefined();
+				expect(env.XDG_CONFIG_HOME).toBeUndefined();
+			}
+		} finally {
+			if (origCache === undefined) delete process.env.XDG_CACHE_HOME;
+			else process.env.XDG_CACHE_HOME = origCache;
+			if (origConfig === undefined) delete process.env.XDG_CONFIG_HOME;
+			else process.env.XDG_CONFIG_HOME = origConfig;
+		}
 	});
 });
