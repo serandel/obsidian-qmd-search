@@ -1,9 +1,11 @@
 {
 	"id": "obsidian-qmd-search",
 	"name": "QMD Search",
-	"version": "0.1.0",
+	"version": "1.0.0-beta",
 	"minAppVersion": "1.0.0",
 	"description": "Adds QMD-powered semantic search with progressive refinement",
 	"author": "Sergio Delgado",
+	"authorUrl": "https://www.sergiodelgado.tech",
+	"fundingUrl": "https://ko-fi.com/serandel",
 	"isDesktopOnly": true
 }
