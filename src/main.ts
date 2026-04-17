@@ -17,6 +17,7 @@ export default class QmdPlugin extends Plugin {
 	indexer: QmdIndexer | null = null;
 	daemonReady = false;
 	daemonError: string | null = null;
+	private statusBar: QmdStatusBar | null = null;
 	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	async onload() {
@@ -26,11 +27,15 @@ export default class QmdPlugin extends Plugin {
 
 		// Status bar
 		const statusBarEl = this.addStatusBarItem();
-		const statusBar = new QmdStatusBar(statusBarEl);
+		this.statusBar = new QmdStatusBar(statusBarEl);
+		this.statusBar.onOpenSettings(() => {
+			(this.app as any).setting.open();
+			(this.app as any).setting.openTabById(this.manifest.id);
+		});
 
 		// Indexer
-		this.indexer = new QmdIndexer(this.settings.qmdBinaryPath);
-		this.indexer.onStateChange((state) => statusBar.update(state));
+		this.indexer = new QmdIndexer(this.settings.qmdBinaryPath, this.settings.niceLevel);
+		this.indexer.onStateChange((state) => this.statusBar!.update(state));
 
 		// Register view
 		this.registerView(VIEW_TYPE_QMD_SEARCH, (leaf) => new QmdSearchView(leaf, this));
@@ -109,17 +114,19 @@ export default class QmdPlugin extends Plugin {
 		try {
 			const pluginDir = `${(this.app.vault.adapter as any).basePath}/.obsidian/plugins/${this.manifest.id}`;
 
-			this.daemon = new QmdDaemonManager(pluginDir, this.settings.qmdBinaryPath);
+			this.daemon = new QmdDaemonManager(pluginDir, this.settings.qmdBinaryPath, this.settings.niceLevel);
 			const port = await this.daemon.start();
 
 			this.client = new QmdClient(this.settings.host, port);
 			this.daemonReady = true;
 			this.restartAttempts = 0;
+			this.statusBar?.clearDaemonDown();
 
 			// Monitor for unexpected exit and auto-restart
 			this.daemon.onExit(() => {
 				if (!this.shuttingDown) {
 					console.warn("[QMD] Daemon exited unexpectedly");
+					this.statusBar?.setDaemonDown();
 					this.attemptRestart();
 				}
 			});
@@ -134,11 +141,19 @@ export default class QmdPlugin extends Plugin {
 		} catch (err) {
 			console.error("[QMD] Failed to start daemon:", err);
 			this.daemonError = "Could not start QMD. Check that qmd is installed.";
+			this.statusBar?.setDaemonDown();
 			new Notice(
 				"QMD Search: Could not start QMD daemon. Check that qmd is installed and on your PATH.",
 				10000
 			);
 		}
+	}
+
+	async ensureDaemon(): Promise<void> {
+		if (this.daemon?.isRunning()) return;
+		console.log("[QMD] Daemon not running, restarting on demand");
+		this.restartAttempts = 0;
+		await this.startDaemon();
 	}
 
 	private async attemptRestart(): Promise<void> {

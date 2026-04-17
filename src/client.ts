@@ -28,7 +28,7 @@ export class QmdClient {
 				collections: [collection],
 				limit,
 			},
-			5000,
+			30000,
 			signal
 		);
 	}
@@ -49,7 +49,7 @@ export class QmdClient {
 				collections: [collection],
 				limit,
 			},
-			60000,
+			120000,
 			signal
 		);
 	}
@@ -87,7 +87,7 @@ export class QmdClient {
 			const payload = JSON.stringify(body);
 			const timeout = setTimeout(() => {
 				req.destroy();
-				reject(new DOMException("The operation was aborted", "AbortError"));
+				reject(new DOMException("The operation timed out", "TimeoutError"));
 			}, timeoutMs);
 
 			const req = httpRequest(

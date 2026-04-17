@@ -140,11 +140,16 @@ export class QmdSearchView extends ItemView {
 			}));
 			this.matchType = "keyword";
 		} catch (err) {
-			if ((err as Error).name !== "AbortError") {
-				console.error("[QMD] Lex query failed:", err);
-				if (query === this.currentQuery) {
-					this.errorMessage = "Search failed — is QMD running?";
-				}
+			if ((err as Error).name === "AbortError") return;
+			console.error("[QMD] Lex query failed:", err);
+			if (query !== this.currentQuery) return;
+			if ((err as Error).name === "TimeoutError") {
+				this.errorMessage = "Search timed out — QMD may still be warming up";
+			} else {
+				this.errorMessage = "Search failed — restarting QMD…";
+				this.renderResults();
+				await this.plugin.ensureDaemon();
+				this.errorMessage = null;
 			}
 		} finally {
 			if (query === this.currentQuery) {
@@ -174,11 +179,16 @@ export class QmdSearchView extends ItemView {
 			}));
 			this.matchType = "hybrid";
 		} catch (err) {
-			if ((err as Error).name !== "AbortError") {
-				console.error("[QMD] Hybrid query failed:", err);
-				if (query === this.currentQuery) {
-					this.errorMessage = "Hybrid search failed";
-				}
+			if ((err as Error).name === "AbortError") return;
+			console.error("[QMD] Hybrid query failed:", err);
+			if (query !== this.currentQuery) return;
+			if ((err as Error).name === "TimeoutError") {
+				this.errorMessage = "Semantic search timed out — QMD may still be warming up";
+			} else {
+				this.errorMessage = "Hybrid search failed — restarting QMD…";
+				this.renderResults();
+				await this.plugin.ensureDaemon();
+				this.errorMessage = null;
 			}
 		} finally {
 			if (query === this.currentQuery) {

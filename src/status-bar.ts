@@ -1,12 +1,16 @@
-import { Notice } from "obsidian";
 import type { IndexerState } from "./types";
 
 export class QmdStatusBar {
 	private lastError = "";
+	private openSettings: (() => void) | null = null;
 
 	constructor(private el: HTMLElement) {
 		this.el.addClass("qmd-status-bar");
 		this.update({ phase: "idle" });
+	}
+
+	onOpenSettings(callback: () => void): void {
+		this.openSettings = callback;
 	}
 
 	update(state: IndexerState): void {
@@ -34,8 +38,19 @@ export class QmdStatusBar {
 				this.el.setText("QMD: Error");
 				this.el.title = state.message;
 				this.lastError = state.message;
-				this.el.onclick = () => new Notice(`QMD Error: ${this.lastError}`, 10000);
+				this.el.onclick = () => this.openSettings?.();
 				break;
 		}
+	}
+
+	setDaemonDown(): void {
+		this.el.setText("QMD \u2717");
+		this.el.addClass("qmd-status-bar-down");
+		this.el.title = "QMD daemon is not running — click to open settings";
+		this.el.onclick = () => this.openSettings?.();
+	}
+
+	clearDaemonDown(): void {
+		this.el.removeClass("qmd-status-bar-down");
 	}
 }

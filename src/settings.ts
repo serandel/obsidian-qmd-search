@@ -65,7 +65,11 @@ export class QmdSettingsTab extends PluginSettingTab {
 				})
 			);
 
-		new Setting(containerEl)
+		// Advanced section (collapsed by default)
+		const advancedDetails = containerEl.createEl("details");
+		advancedDetails.createEl("summary", { text: "Advanced", cls: "qmd-advanced-summary" });
+
+		new Setting(advancedDetails)
 			.setName("Debounce delay")
 			.setDesc("How long to wait (ms) after the last file change before triggering an index update")
 			.addText((text) =>
@@ -78,6 +82,21 @@ export class QmdSettingsTab extends PluginSettingTab {
 							this.plugin.settings.debounceDelayMs = num;
 							await this.plugin.saveSettings();
 						}
+					})
+			);
+
+		new Setting(advancedDetails)
+			.setName("Process priority (nice level)")
+			.setDesc("Lower CPU priority for QMD processes (0 = normal, 19 = lowest). Reduces system sluggishness during searches and indexing.")
+			.addSlider((slider) =>
+				slider
+					.setLimits(0, 19, 1)
+					.setValue(this.plugin.settings.niceLevel)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.niceLevel = value;
+						this.plugin.daemon?.applyNiceLevel(value);
+						await this.plugin.saveSettings();
 					})
 			);
 

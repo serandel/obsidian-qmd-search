@@ -1,5 +1,9 @@
 /* obsidian-qmd-search styles */
 
+.qmd-status-bar-down {
+	color: var(--text-error);
+}
+
 .qmd-search-container {
 	display: flex;
 	flex-direction: column;
