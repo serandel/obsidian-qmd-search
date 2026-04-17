@@ -105,6 +105,18 @@ export class QmdSettingsTab extends PluginSettingTab {
 					})
 			);
 
+		// Links
+		const linksDiv = containerEl.createEl("div", { cls: "qmd-links" });
+		const linksList = linksDiv.createEl("ul");
+		for (const [label, url] of [
+			["QMD on GitHub", "https://github.com/tobi/qmd"],
+			["QMD Search on GitHub", "https://github.com/serandel/obsidian-qmd-search"],
+			["www.SergioDelgado.tech", "https://www.sergiodelgado.tech"],
+		]) {
+			const li = linksList.createEl("li");
+			li.createEl("a", { text: label, href: url });
+		}
+
 		// Ko-fi link
 		const kofiDiv = containerEl.createEl("div", { cls: "qmd-kofi" });
 		kofiDiv.createEl("p", {
