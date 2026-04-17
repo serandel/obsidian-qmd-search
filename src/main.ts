@@ -92,6 +92,7 @@ export default class QmdPlugin extends Plugin {
 		const handler = (_file: TAbstractFile) => {
 			if (this.debounceTimer) clearTimeout(this.debounceTimer);
 			this.debounceTimer = setTimeout(() => {
+				console.log("[QMD] File change debounce fired, requesting update");
 				this.indexer?.requestUpdate();
 			}, this.settings.debounceDelayMs);
 		};

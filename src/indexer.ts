@@ -57,6 +57,7 @@ export class QmdIndexer {
 
 	private runUpdate(): void {
 		this.cancelled = false;
+		console.log("[QMD] Starting index update");
 		this.setState({ phase: "updating" });
 
 		const proc = spawn(this.resolvedPath, ["update"], {
@@ -83,17 +84,19 @@ export class QmdIndexer {
 
 			if (code !== 0) {
 				const msg = stderr.trim() || `Update exited with code ${code}`;
+				console.error("[QMD] Update failed:", msg);
 				this.setState({ phase: "error", message: msg });
 				return;
 			}
 
-			// Update succeeded — start embeddings pipeline
+			console.log("[QMD] Update complete, starting embeddings");
 			this.runEmbeddings();
 		});
 	}
 
 	private runEmbeddings(): void {
 		if (this.cancelled) return;
+		console.log("[QMD] Starting embeddings");
 		this.setState({ phase: "embedding", pending: -1 }); // -1 = unknown
 
 		const proc = spawn(this.resolvedPath, ["embed"], {
@@ -136,11 +139,11 @@ export class QmdIndexer {
 			if (this.cancelled) return;
 
 			if (pending > 0) {
+				console.log(`[QMD] ${pending} embeddings pending, retrying`);
 				this.setState({ phase: "embedding", pending });
-				// Re-run embeddings for remaining docs
 				this.runEmbeddings();
 			} else {
-				// All done — check if another update was requested
+				console.log("[QMD] Indexer pipeline complete");
 				this.onPipelineComplete();
 			}
 		});
