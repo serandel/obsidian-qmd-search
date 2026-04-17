@@ -51,3 +51,18 @@ export function resolveBinaryPath(binary: string): string {
 export function getBinDir(resolvedPath: string): string {
 	return resolvedPath.substring(0, resolvedPath.lastIndexOf("/"));
 }
+
+/**
+ * Build the environment for spawning QMD subprocesses.
+ * Prepends the binary's directory to PATH so shell wrappers can find
+ * sibling binaries, and strips XDG_CACHE_HOME so the Flatpak sandbox
+ * override doesn't redirect qmd away from the host cache.
+ */
+export function buildQmdEnv(resolvedPath: string): Record<string, string> {
+	const binDir = getBinDir(resolvedPath);
+	const { XDG_CACHE_HOME: _, ...baseEnv } = process.env as Record<string, string>;
+	return {
+		...baseEnv,
+		PATH: binDir + ":" + (process.env.PATH || ""),
+	};
+}

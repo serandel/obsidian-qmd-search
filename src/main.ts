@@ -1,7 +1,9 @@
-import { addIcon, Notice, Plugin } from "obsidian";
+import { addIcon, Notice, Plugin, type TAbstractFile } from "obsidian";
 import { QmdSettingsTab } from "./settings";
 import { QmdDaemonManager } from "./daemon";
 import { QmdClient } from "./client";
+import { QmdIndexer } from "./indexer";
+import { QmdStatusBar } from "./status-bar";
 import { QmdSearchView, VIEW_TYPE_QMD_SEARCH } from "./view";
 import { DEFAULT_SETTINGS, type QmdSettings } from "./types";
 
@@ -12,13 +14,23 @@ export default class QmdPlugin extends Plugin {
 	settings: QmdSettings = DEFAULT_SETTINGS;
 	daemon: QmdDaemonManager | null = null;
 	client: QmdClient | null = null;
+	indexer: QmdIndexer | null = null;
 	daemonReady = false;
 	daemonError: string | null = null;
+	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	async onload() {
 		await this.loadSettings();
 
 		addIcon(QMD_ICON, QMD_ICON_SVG);
+
+		// Status bar
+		const statusBarEl = this.addStatusBarItem();
+		const statusBar = new QmdStatusBar(statusBarEl);
+
+		// Indexer
+		this.indexer = new QmdIndexer(this.settings.qmdBinaryPath);
+		this.indexer.onStateChange((state) => statusBar.update(state));
 
 		// Register view
 		this.registerView(VIEW_TYPE_QMD_SEARCH, (leaf) => new QmdSearchView(leaf, this));
@@ -28,7 +40,7 @@ export default class QmdPlugin extends Plugin {
 			this.activateView();
 		});
 
-		// Command to open search
+		// Commands
 		this.addCommand({
 			id: "open-qmd-search",
 			name: "Open QMD Search",
@@ -36,6 +48,27 @@ export default class QmdPlugin extends Plugin {
 				this.activateView();
 			},
 		});
+
+		this.addCommand({
+			id: "update-index",
+			name: "Update index",
+			callback: () => {
+				this.indexer?.requestUpdate();
+			},
+		});
+
+		this.addCommand({
+			id: "generate-embeddings",
+			name: "Generate embeddings",
+			callback: () => {
+				this.indexer?.requestEmbeddings();
+			},
+		});
+
+		// Auto-update on file changes
+		if (this.settings.autoUpdate) {
+			this.registerFileWatcher();
+		}
 
 		// Settings tab
 		this.addSettingTab(new QmdSettingsTab(this.app, this));
@@ -46,12 +79,28 @@ export default class QmdPlugin extends Plugin {
 
 	onunload() {
 		this.shuttingDown = true;
+		this.indexer?.cancel();
+		if (this.debounceTimer) clearTimeout(this.debounceTimer);
 		this.daemon?.stop();
 	}
 
 	private shuttingDown = false;
 	private restartAttempts = 0;
 	private readonly MAX_RESTART_ATTEMPTS = 3;
+
+	private registerFileWatcher(): void {
+		const handler = (_file: TAbstractFile) => {
+			if (this.debounceTimer) clearTimeout(this.debounceTimer);
+			this.debounceTimer = setTimeout(() => {
+				this.indexer?.requestUpdate();
+			}, this.settings.debounceDelayMs);
+		};
+
+		this.registerEvent(this.app.vault.on("create", handler));
+		this.registerEvent(this.app.vault.on("modify", handler));
+		this.registerEvent(this.app.vault.on("delete", handler));
+		this.registerEvent(this.app.vault.on("rename", handler));
+	}
 
 	private async startDaemon(): Promise<void> {
 		this.daemonReady = false;
@@ -74,8 +123,11 @@ export default class QmdPlugin extends Plugin {
 				}
 			});
 
-			// Async warmup — don't block
-			this.daemon.warmup(this.client, this.settings.collection).catch(() => {});
+			// Async warmup — don't block. Run initial index update after warmup
+			// completes so they don't compete for GPU resources.
+			this.daemon.warmup(this.client, this.settings.collection)
+				.then(() => this.indexer?.requestUpdate())
+				.catch(() => this.indexer?.requestUpdate());
 
 			console.log(`[QMD] Daemon started on port ${port}`);
 		} catch (err) {

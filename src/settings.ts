@@ -55,6 +55,32 @@ export class QmdSettingsTab extends PluginSettingTab {
 					})
 			);
 
+		new Setting(containerEl)
+			.setName("Auto-update index")
+			.setDesc("Automatically update the QMD index when files change in the vault")
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.autoUpdate).onChange(async (value) => {
+					this.plugin.settings.autoUpdate = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("Debounce delay")
+			.setDesc("How long to wait (ms) after the last file change before triggering an index update")
+			.addText((text) =>
+				text
+					.setPlaceholder("5000")
+					.setValue(String(this.plugin.settings.debounceDelayMs))
+					.onChange(async (value) => {
+						const num = parseInt(value, 10);
+						if (!isNaN(num) && num >= 0) {
+							this.plugin.settings.debounceDelayMs = num;
+							await this.plugin.saveSettings();
+						}
+					})
+			);
+
 		// Ko-fi link
 		const kofiDiv = containerEl.createEl("div", { cls: "qmd-kofi" });
 		kofiDiv.createEl("p", {

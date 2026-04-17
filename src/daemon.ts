@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from "child_process";
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import { type QmdClient } from "./client";
-import { getBinDir, resolveBinaryPath } from "./resolve-binary";
+import { buildQmdEnv, resolveBinaryPath } from "./resolve-binary";
 
 export class QmdDaemonManager {
 	private process: ChildProcess | null = null;
@@ -21,19 +21,7 @@ export class QmdDaemonManager {
 
 		return new Promise((resolve, reject) => {
 			const resolvedPath = resolveBinaryPath(this.qmdBinaryPath);
-
-			// Prepend the binary's directory to PATH so shell wrappers
-			// (e.g. qmd calling node) can find sibling binaries.
-			// Inside Flatpak, XDG_CACHE_HOME points to the sandbox cache
-			// dir, but qmd's index lives under the host's cache. Remove
-			// the sandbox override so qmd falls back to the XDG default
-			// ($HOME/.cache), which resolves to the host path.
-			const binDir = getBinDir(resolvedPath);
-			const { XDG_CACHE_HOME: _, ...baseEnv } = process.env as Record<string, string>;
-			const env = {
-				...baseEnv,
-				PATH: binDir + ":" + (process.env.PATH || ""),
-			};
+			const env = buildQmdEnv(resolvedPath);
 
 			const proc = spawn(resolvedPath, ["mcp", "--http"], {
 				stdio: ["ignore", "pipe", "pipe"],

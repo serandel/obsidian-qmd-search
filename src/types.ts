@@ -4,6 +4,8 @@ export interface QmdSettings {
 	port: number;
 	collection: string;
 	maxResults: number;
+	autoUpdate: boolean;
+	debounceDelayMs: number;
 }
 
 export const DEFAULT_SETTINGS: QmdSettings = {
@@ -12,7 +14,15 @@ export const DEFAULT_SETTINGS: QmdSettings = {
 	port: 0, // 0 = auto-assigned by daemon
 	collection: "obsidian",
 	maxResults: 20,
+	autoUpdate: true,
+	debounceDelayMs: 5000,
 };
+
+export type IndexerState =
+	| { phase: "idle" }
+	| { phase: "updating" }
+	| { phase: "embedding"; pending: number }
+	| { phase: "error"; message: string };
 
 export interface QmdSearchResult {
 	docid: string;

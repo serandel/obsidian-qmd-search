@@ -1,0 +1,41 @@
+import { Notice } from "obsidian";
+import type { IndexerState } from "./types";
+
+export class QmdStatusBar {
+	private lastError = "";
+
+	constructor(private el: HTMLElement) {
+		this.el.addClass("qmd-status-bar");
+		this.update({ phase: "idle" });
+	}
+
+	update(state: IndexerState): void {
+		switch (state.phase) {
+			case "idle":
+				this.el.setText("QMD \u2713");
+				this.el.title = "QMD index is up to date";
+				this.el.onclick = null;
+				break;
+			case "updating":
+				this.el.setText("QMD: Indexing\u2026");
+				this.el.title = "Updating QMD index";
+				this.el.onclick = null;
+				break;
+			case "embedding": {
+				const label = state.pending > 0
+					? `QMD: Embeddings (${state.pending} pending)`
+					: "QMD: Embeddings\u2026";
+				this.el.setText(label);
+				this.el.title = "Generating vector embeddings";
+				this.el.onclick = null;
+				break;
+			}
+			case "error":
+				this.el.setText("QMD: Error");
+				this.el.title = state.message;
+				this.lastError = state.message;
+				this.el.onclick = () => new Notice(`QMD Error: ${this.lastError}`, 10000);
+				break;
+		}
+	}
+}
