@@ -3,5 +3,8 @@
   "host": "localhost",
   "port": 0,
   "collection": "obsidian",
-  "maxResults": 20
+  "maxResults": 20,
+  "autoUpdate": true,
+  "debounceDelayMs": 5000,
+  "niceLevel": 10
 }
