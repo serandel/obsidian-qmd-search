@@ -8,7 +8,12 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(npm run:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(qmd --help)",
+      "Bash(qmd status:*)",
+      "Bash(qmd update:*)",
+      "Bash(qmd embed:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }
