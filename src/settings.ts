@@ -41,7 +41,7 @@ export class QmdSettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Max results")
-			.setDesc("Maximum results per search stage")
+			.setDesc("Maximum search results per query")
 			.addText((text) =>
 				text
 					.setPlaceholder("20")

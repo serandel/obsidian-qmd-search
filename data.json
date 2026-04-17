@@ -1,0 +1,7 @@
+{
+  "qmdBinaryPath": "qmd",
+  "host": "localhost",
+  "port": 0,
+  "collection": "obsidian",
+  "maxResults": 20
+}

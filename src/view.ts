@@ -106,6 +106,9 @@ export class QmdSearchView extends ItemView {
 		this.hybridAbortController?.abort();
 		this.hybridButton?.remove();
 		this.hybridButton = null;
+		// Abort lex if still in-flight — hybrid supersedes it
+		this.lexAbortController?.abort();
+		this.lexLoading = false;
 		this.fireHybridQuery(this.currentQuery);
 	}
 
@@ -189,54 +192,64 @@ export class QmdSearchView extends ItemView {
 		if (!this.resultsContainer) return;
 		this.resultsContainer.empty();
 
-		// Show error if any
 		if (this.errorMessage) {
 			this.resultsContainer.createEl("div", {
 				text: this.errorMessage,
 				cls: "qmd-error",
 			});
+			return;
 		}
 
-		// Results section
-		if (this.currentQuery && !this.errorMessage) {
+		if (!this.currentQuery) return;
+
+		if (this.hybridLoading) {
+			// Semantic spinner on top
+			this.renderSpinnerInto(this.resultsContainer, "Searching semantically…");
+			// Show keyword results below if we have them
+			if (this.results.length > 0 && this.matchType === "keyword") {
+				const section = this.resultsContainer.createEl("div", {
+					cls: "qmd-section qmd-section-keyword",
+				});
+				section.createEl("div", {
+					cls: "qmd-section-header",
+				}).createSpan({ text: `Keyword matches (${this.results.length})` });
+				this.renderResultsInto(section, this.results, "keyword");
+			}
+		} else if (this.lexLoading) {
+			// Keyword spinner + button, no header
+			this.renderSpinnerInto(this.resultsContainer, "Searching keywords…");
+			this.renderHybridButton();
+		} else if (this.results.length > 0) {
+			// Show results with header
 			const section = this.resultsContainer.createEl("div", {
 				cls: `qmd-section qmd-section-${this.matchType}`,
 			});
-			const header = section.createEl("div", {
+			const label = this.matchType === "hybrid"
+				? `Matches (${this.results.length})`
+				: `Keyword matches (${this.results.length})`;
+			section.createEl("div", {
 				cls: "qmd-section-header",
+			}).createSpan({ text: label });
+			this.renderResultsInto(section, this.results, this.matchType);
+			if (!this.hybridTriggered) this.renderHybridButton();
+		} else {
+			this.resultsContainer.createEl("div", {
+				text: "No results found",
+				cls: "qmd-no-results",
 			});
-
-			if (this.lexLoading) {
-				header.createSpan({ text: "Keyword matches" });
-				this.renderSpinnerInto(section, "Searching keywords…");
-			} else if (this.results.length > 0) {
-				const label = `${this.matchType === "hybrid" ? "Matches" : "Keyword matches"} (${this.results.length})`;
-				header.createSpan({ text: label });
-				this.renderResultsInto(section, this.results, this.matchType);
-			} else {
-				header.createSpan({ text: "Keyword matches" });
-				section.createEl("div", {
-					text: "No results found",
-					cls: "qmd-no-results",
-				});
-			}
+			if (!this.hybridTriggered) this.renderHybridButton();
 		}
+	}
 
-		// Hybrid loading spinner (shown below keyword results)
-		if (this.hybridLoading) {
-			this.renderSpinnerInto(this.resultsContainer, "Searching semantically…");
-		}
-
-		// Hybrid search button (only when showing keyword results and not already triggered)
-		if (this.currentQuery && !this.errorMessage && !this.hybridTriggered) {
-			this.hybridButton = this.resultsContainer.createEl("button", {
-				text: "Search semantically",
-				cls: "qmd-hybrid-button",
-			});
-			this.hybridButton.addEventListener("click", () => {
-				this.triggerHybridSearch();
-			});
-		}
+	private renderHybridButton(): void {
+		if (!this.resultsContainer) return;
+		this.hybridButton = this.resultsContainer.createEl("button", {
+			text: "Search semantically",
+			cls: "qmd-hybrid-button",
+		});
+		this.hybridButton.addEventListener("click", () => {
+			this.triggerHybridSearch();
+		});
 	}
 
 	private renderSpinnerInto(parent: HTMLElement, label: string): void {
