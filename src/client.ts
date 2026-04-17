@@ -21,6 +21,7 @@ export class QmdClient {
 		limit: number,
 		signal?: AbortSignal
 	): Promise<QmdSearchResult[]> {
+		console.log(`[QMD] Lex query: "${query}"`);
 		return this.doQuery(
 			{
 				searches: [{ type: "lex", query }],
@@ -38,6 +39,7 @@ export class QmdClient {
 		limit: number,
 		signal?: AbortSignal
 	): Promise<QmdSearchResult[]> {
+		console.log(`[QMD] Hybrid query: "${query}"`);
 		return this.doQuery(
 			{
 				searches: [

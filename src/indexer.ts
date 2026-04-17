@@ -66,7 +66,11 @@ export class QmdIndexer {
 		});
 		this.process = proc;
 
+		let stdout = "";
 		let stderr = "";
+		proc.stdout?.on("data", (chunk: Buffer) => {
+			stdout += chunk.toString();
+		});
 		proc.stderr?.on("data", (chunk: Buffer) => {
 			stderr += chunk.toString();
 		});
@@ -89,7 +93,8 @@ export class QmdIndexer {
 				return;
 			}
 
-			console.log("[QMD] Update complete, starting embeddings");
+			console.log("[QMD] Update complete:", stdout.trim());
+			if (stderr.trim()) console.warn("[QMD] Update stderr:", stderr.trim());
 			this.runEmbeddings();
 		});
 	}
