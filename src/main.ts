@@ -32,6 +32,7 @@ export default class QmdPlugin extends Plugin {
 			(this.app as any).setting.open();
 			(this.app as any).setting.openTabById(this.manifest.id);
 		});
+		this.statusBar.onOpenSearch(() => this.activateView());
 
 		// Indexer
 		this.indexer = new QmdIndexer(this.settings.qmdBinaryPath, this.settings.niceLevel);

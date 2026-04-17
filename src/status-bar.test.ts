@@ -61,4 +61,14 @@ describe("QmdStatusBar", () => {
 		new QmdStatusBar(el);
 		expect(el.textContent).toBe("QMD \u2713");
 	});
+
+	it("idle state clicks open search panel", () => {
+		const el = createMockElement();
+		const bar = new QmdStatusBar(el);
+		const searchCb = vi.fn();
+		bar.onOpenSearch(searchCb);
+		bar.update({ phase: "idle" });
+		(el.onclick as () => void)();
+		expect(searchCb).toHaveBeenCalledOnce();
+	});
 });

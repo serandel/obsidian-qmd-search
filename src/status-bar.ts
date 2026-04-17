@@ -3,6 +3,7 @@ import type { IndexerState } from "./types";
 export class QmdStatusBar {
 	private lastError = "";
 	private openSettings: (() => void) | null = null;
+	private openSearch: (() => void) | null = null;
 
 	constructor(private el: HTMLElement) {
 		this.el.addClass("qmd-status-bar");
@@ -13,12 +14,16 @@ export class QmdStatusBar {
 		this.openSettings = callback;
 	}
 
+	onOpenSearch(callback: () => void): void {
+		this.openSearch = callback;
+	}
+
 	update(state: IndexerState): void {
 		switch (state.phase) {
 			case "idle":
 				this.el.setText("QMD \u2713");
-				this.el.title = "QMD index is up to date";
-				this.el.onclick = null;
+				this.el.title = "QMD index is up to date — click to search";
+				this.el.onclick = () => this.openSearch?.();
 				break;
 			case "updating":
 				this.el.setText("QMD: Indexing\u2026");
