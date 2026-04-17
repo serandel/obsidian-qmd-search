@@ -36,6 +36,10 @@ npm run dev    # watch mode
 npm run build  # production build
 ```
 
+## License
+
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
+
 ## Support
 
 If you find this plugin useful, consider buying me a coffee:
