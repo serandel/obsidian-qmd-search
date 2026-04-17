@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn, execFile } from "child_process";
+import { setPriority } from "os";
 import { buildQmdEnv, resolveBinaryPath } from "./resolve-binary";
 import type { IndexerState } from "./types";
 
@@ -9,12 +10,14 @@ export class QmdIndexer {
 	private cancelled = false;
 	private stateCallback: ((state: IndexerState) => void) | null = null;
 
+	private niceLevel: number;
 	private resolvedPath: string;
 	private env: Record<string, string>;
 
-	constructor(qmdBinaryPath: string) {
+	constructor(qmdBinaryPath: string, niceLevel: number) {
 		this.resolvedPath = resolveBinaryPath(qmdBinaryPath);
 		this.env = buildQmdEnv(this.resolvedPath);
+		this.niceLevel = niceLevel;
 	}
 
 	onStateChange(callback: (state: IndexerState) => void): void {
@@ -64,6 +67,9 @@ export class QmdIndexer {
 			stdio: ["ignore", "pipe", "pipe"],
 			env: this.env,
 		});
+		if (proc.pid && this.niceLevel > 0) {
+			try { setPriority(proc.pid, this.niceLevel); } catch { /* ignore on Windows */ }
+		}
 		this.process = proc;
 
 		let stdout = "";
@@ -108,6 +114,9 @@ export class QmdIndexer {
 			stdio: ["ignore", "pipe", "pipe"],
 			env: this.env,
 		});
+		if (proc.pid && this.niceLevel > 0) {
+			try { setPriority(proc.pid, this.niceLevel); } catch { /* ignore on Windows */ }
+		}
 		this.process = proc;
 
 		let stderr = "";

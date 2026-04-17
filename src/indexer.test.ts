@@ -31,7 +31,7 @@ describe("QmdIndexer", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		indexer = new QmdIndexer("qmd");
+		indexer = new QmdIndexer("qmd", 10);
 		states = [];
 		indexer.onStateChange((s) => states.push(structuredClone(s)));
 	});

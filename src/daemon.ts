@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from "child_process";
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
+import { setPriority } from "os";
 import { type QmdClient } from "./client";
 import { buildQmdEnv, resolveBinaryPath } from "./resolve-binary";
 
@@ -9,11 +10,13 @@ export class QmdDaemonManager {
 	private port: number = 0;
 	private pidFilePath: string;
 	private qmdBinaryPath: string;
+	private niceLevel: number;
 	private exitCallback: (() => void) | null = null;
 
-	constructor(pluginDir: string, qmdBinaryPath: string) {
+	constructor(pluginDir: string, qmdBinaryPath: string, niceLevel: number) {
 		this.pidFilePath = join(pluginDir, "qmd.pid");
 		this.qmdBinaryPath = qmdBinaryPath;
+		this.niceLevel = niceLevel;
 	}
 
 	async start(): Promise<number> {
@@ -27,6 +30,10 @@ export class QmdDaemonManager {
 				stdio: ["ignore", "pipe", "pipe"],
 				env,
 			});
+
+			if (proc.pid && this.niceLevel > 0) {
+				try { setPriority(proc.pid, this.niceLevel); } catch { /* ignore on Windows */ }
+			}
 
 			this.process = proc;
 
@@ -92,6 +99,13 @@ export class QmdDaemonManager {
 
 	isRunning(): boolean {
 		return this.process !== null && this.process.exitCode === null;
+	}
+
+	applyNiceLevel(level: number): void {
+		this.niceLevel = level;
+		if (this.process?.pid && level > 0) {
+			try { setPriority(this.process.pid, level); } catch { /* ignore */ }
+		}
 	}
 
 	onExit(callback: () => void): void {

@@ -6,6 +6,7 @@ export interface QmdSettings {
 	maxResults: number;
 	autoUpdate: boolean;
 	debounceDelayMs: number;
+	niceLevel: number;
 }
 
 export const DEFAULT_SETTINGS: QmdSettings = {
@@ -16,6 +17,7 @@ export const DEFAULT_SETTINGS: QmdSettings = {
 	maxResults: 20,
 	autoUpdate: true,
 	debounceDelayMs: 5000,
+	niceLevel: 10,
 };
 
 export type IndexerState =
