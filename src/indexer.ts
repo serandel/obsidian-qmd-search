@@ -1,6 +1,7 @@
-import { type ChildProcess, spawn, execFile } from "child_process";
+import { type ChildProcess, spawn } from "child_process";
 import { setPriority } from "os";
 import { buildQmdEnv, resolveBinaryPath } from "./resolve-binary";
+import type { QmdMcpClient } from "./mcp-client";
 import type { IndexerState } from "./types";
 
 export class QmdIndexer {
@@ -13,11 +14,17 @@ export class QmdIndexer {
 	private niceLevel: number;
 	private resolvedPath: string;
 	private env: Record<string, string>;
+	private mcpClient: QmdMcpClient | null;
 
-	constructor(qmdBinaryPath: string, niceLevel: number) {
+	constructor(qmdBinaryPath: string, niceLevel: number, mcpClient: QmdMcpClient | null) {
 		this.resolvedPath = resolveBinaryPath(qmdBinaryPath);
 		this.env = buildQmdEnv(this.resolvedPath);
 		this.niceLevel = niceLevel;
+		this.mcpClient = mcpClient;
+	}
+
+	setMcpClient(client: QmdMcpClient | null): void {
+		this.mcpClient = client;
 	}
 
 	onStateChange(callback: (state: IndexerState) => void): void {
@@ -149,7 +156,7 @@ export class QmdIndexer {
 	private checkPendingAndRetry(): void {
 		if (this.cancelled) return;
 
-		this.checkPending((pending) => {
+		this.checkPending().then((pending) => {
 			if (this.cancelled) return;
 
 			if (pending > 0) {
@@ -163,15 +170,9 @@ export class QmdIndexer {
 		});
 	}
 
-	private checkPending(callback: (pending: number) => void): void {
-		execFile(this.resolvedPath, ["status"], { env: this.env, timeout: 10000 }, (err, stdout) => {
-			if (err) {
-				callback(0); // Can't determine — assume done
-				return;
-			}
-			const pending = parsePendingFromStatus(stdout);
-			callback(pending);
-		});
+	private async checkPending(): Promise<number> {
+		if (!this.mcpClient) return 0;
+		return this.mcpClient.checkPending();
 	}
 
 	private onPipelineComplete(): void {
@@ -184,18 +185,3 @@ export class QmdIndexer {
 	}
 }
 
-/**
- * Parse the number of pending (unembedded) documents from `qmd status` output.
- * Looks for a line like "Pending:  42 unembedded" or similar.
- * Returns 0 if no pending indicator is found (all embeddings complete).
- */
-export function parsePendingFromStatus(output: string): number {
-	// Look for "Pending:" or "unembedded" patterns
-	const pendingMatch = output.match(/Pending:\s*(\d+)/i);
-	if (pendingMatch) return parseInt(pendingMatch[1]!, 10);
-
-	const unembeddedMatch = output.match(/(\d+)\s*unembedded/i);
-	if (unembeddedMatch) return parseInt(unembeddedMatch[1]!, 10);
-
-	return 0;
-}

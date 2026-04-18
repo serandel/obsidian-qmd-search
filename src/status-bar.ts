@@ -64,7 +64,7 @@ export class QmdStatusBar {
 	setDaemonDown(): void {
 		this.el.setText("QMD \u2717");
 		this.el.addClass("qmd-status-bar-down");
-		this.el.title = "QMD daemon is not running — click to open settings";
+		this.el.title = "QMD is not connected — click to open settings";
 		this.el.onclick = () => this.openSettings?.();
 	}
 

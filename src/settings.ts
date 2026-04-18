@@ -119,7 +119,7 @@ export class QmdSettingsTab extends PluginSettingTab {
 					.setDynamicTooltip()
 					.onChange(async (value) => {
 						this.plugin.settings.niceLevel = value;
-						this.plugin.daemon?.applyNiceLevel(value);
+						this.plugin.mcpClient?.applyNiceLevel(value);
 						await this.plugin.saveSettings();
 					})
 			);

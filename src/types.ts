@@ -1,7 +1,5 @@
 export interface QmdSettings {
 	qmdBinaryPath: string;
-	host: string;
-	port: number;
 	collection: string;
 	maxResults: number;
 	autoIndexOnStartup: boolean;
@@ -12,8 +10,6 @@ export interface QmdSettings {
 
 export const DEFAULT_SETTINGS: QmdSettings = {
 	qmdBinaryPath: "qmd",
-	host: "localhost",
-	port: 0, // 0 = auto-assigned by daemon
 	collection: "obsidian",
 	maxResults: 20,
 	autoIndexOnStartup: true,

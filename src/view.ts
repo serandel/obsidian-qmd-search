@@ -113,10 +113,10 @@ export class QmdSearchView extends ItemView {
 	}
 
 	private async fireLexQuery(query: string): Promise<void> {
-		const client = (this.plugin as any).client;
-		if (!client) {
-			if ((this.plugin as any).daemonError) {
-				this.errorMessage = (this.plugin as any).daemonError;
+		const client = this.plugin.mcpClient;
+		if (!client || !client.isConnected()) {
+			if (this.plugin.mcpError) {
+				this.errorMessage = this.plugin.mcpError;
 			} else {
 				this.errorMessage = "QMD is starting...";
 			}
@@ -131,7 +131,6 @@ export class QmdSearchView extends ItemView {
 				query,
 				this.plugin.settings.collection,
 				this.plugin.settings.maxResults,
-				this.lexAbortController.signal
 			);
 			if (query !== this.currentQuery) return; // stale
 			this.results = results.map((r: QmdSearchResult) => ({
@@ -148,7 +147,7 @@ export class QmdSearchView extends ItemView {
 			} else {
 				this.errorMessage = "Search failed — restarting QMD…";
 				this.renderResults();
-				await this.plugin.ensureDaemon();
+				await this.plugin.ensureConnection();
 				this.errorMessage = null;
 			}
 		} finally {
@@ -160,8 +159,8 @@ export class QmdSearchView extends ItemView {
 	}
 
 	private async fireHybridQuery(query: string): Promise<void> {
-		const client = (this.plugin as any).client;
-		if (!client) return; // lex already shows the status message
+		const client = this.plugin.mcpClient;
+		if (!client || !client.isConnected()) return; // lex already shows the status message
 		this.hybridAbortController = new AbortController();
 		this.hybridLoading = true;
 		this.renderResults();
@@ -170,7 +169,6 @@ export class QmdSearchView extends ItemView {
 				query,
 				this.plugin.settings.collection,
 				this.plugin.settings.maxResults,
-				this.hybridAbortController.signal
 			);
 			if (query !== this.currentQuery) return; // stale
 			this.results = results.map((r: QmdSearchResult) => ({
@@ -187,7 +185,7 @@ export class QmdSearchView extends ItemView {
 			} else {
 				this.errorMessage = "Hybrid search failed — restarting QMD…";
 				this.renderResults();
-				await this.plugin.ensureDaemon();
+				await this.plugin.ensureConnection();
 				this.errorMessage = null;
 			}
 		} finally {

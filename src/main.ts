@@ -1,7 +1,6 @@
 import { addIcon, type EventRef, Notice, Plugin, type TAbstractFile } from "obsidian";
 import { QmdSettingsTab } from "./settings";
-import { QmdDaemonManager } from "./daemon";
-import { QmdClient } from "./client";
+import { QmdMcpClient } from "./mcp-client";
 import { QmdIndexer } from "./indexer";
 import { QmdStatusBar } from "./status-bar";
 import { QmdSearchView, VIEW_TYPE_QMD_SEARCH } from "./view";
@@ -12,11 +11,10 @@ const QMD_ICON_SVG = `<circle cx="46" cy="46" r="33" fill="none" stroke="current
 
 export default class QmdPlugin extends Plugin {
 	settings: QmdSettings = DEFAULT_SETTINGS;
-	daemon: QmdDaemonManager | null = null;
-	client: QmdClient | null = null;
+	mcpClient: QmdMcpClient | null = null;
 	indexer: QmdIndexer | null = null;
-	daemonReady = false;
-	daemonError: string | null = null;
+	mcpConnected = false;
+	mcpError: string | null = null;
 	private statusBar: QmdStatusBar | null = null;
 	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	private fileWatcherRefs: EventRef[] = [];
@@ -35,8 +33,8 @@ export default class QmdPlugin extends Plugin {
 		});
 		this.statusBar.onOpenSearch(() => this.activateView());
 
-		// Indexer
-		this.indexer = new QmdIndexer(this.settings.qmdBinaryPath, this.settings.niceLevel);
+		// Indexer (MCP client set after connection)
+		this.indexer = new QmdIndexer(this.settings.qmdBinaryPath, this.settings.niceLevel, null);
 		this.indexer.onStateChange((state) => this.statusBar!.update(state));
 
 		// Register view
@@ -80,15 +78,15 @@ export default class QmdPlugin extends Plugin {
 		// Settings tab
 		this.addSettingTab(new QmdSettingsTab(this.app, this));
 
-		// Start daemon in background — don't block plugin load
-		this.startDaemon();
+		// Connect MCP client in background — don't block plugin load
+		this.connectMcp();
 	}
 
 	onunload() {
 		this.shuttingDown = true;
 		this.indexer?.cancel();
 		if (this.debounceTimer) clearTimeout(this.debounceTimer);
-		this.daemon?.stop();
+		this.mcpClient?.close();
 	}
 
 	private shuttingDown = false;
@@ -128,66 +126,66 @@ export default class QmdPlugin extends Plugin {
 		}
 	}
 
-	private async startDaemon(): Promise<void> {
-		this.daemonReady = false;
-		this.daemonError = null;
+	private async connectMcp(): Promise<void> {
+		this.mcpConnected = false;
+		this.mcpError = null;
 		try {
-			const pluginDir = `${(this.app.vault.adapter as any).basePath}/.obsidian/plugins/${this.manifest.id}`;
+			this.mcpClient = new QmdMcpClient(this.settings.qmdBinaryPath, this.settings.niceLevel);
 
-			this.daemon = new QmdDaemonManager(pluginDir, this.settings.qmdBinaryPath, this.settings.niceLevel);
-			const port = await this.daemon.start();
-
-			this.client = new QmdClient(this.settings.host, port);
-			this.daemonReady = true;
-			this.restartAttempts = 0;
-			this.statusBar?.clearDaemonDown();
-
-			// Monitor for unexpected exit and auto-restart
-			this.daemon.onExit(() => {
+			this.mcpClient.onClose(() => {
 				if (!this.shuttingDown) {
-					console.warn("[QMD] Daemon exited unexpectedly");
+					console.warn("[QMD] MCP connection closed unexpectedly");
+					this.mcpConnected = false;
+					this.indexer?.setMcpClient(null);
 					this.statusBar?.setDaemonDown();
 					this.attemptRestart();
 				}
 			});
 
+			await this.mcpClient.connect();
+
+			this.mcpConnected = true;
+			this.restartAttempts = 0;
+			this.indexer?.setMcpClient(this.mcpClient);
+			this.statusBar?.clearDaemonDown();
+
 			// Async warmup — don't block. Run initial index update after warmup
 			// completes so they don't compete for GPU resources.
 			if (this.settings.autoIndexOnStartup) {
-				this.daemon.warmup(this.client, this.settings.collection)
+				this.mcpClient.warmup(this.settings.collection)
 					.then(() => this.indexer?.requestUpdate())
 					.catch(() => this.indexer?.requestUpdate());
 			} else {
-				this.daemon.warmup(this.client, this.settings.collection).catch(() => {});
+				this.mcpClient.warmup(this.settings.collection).catch(() => {});
 			}
 
-			console.log(`[QMD] Daemon started on port ${port}`);
+			console.log("[QMD] MCP client connected");
 		} catch (err) {
-			console.error("[QMD] Failed to start daemon:", err);
-			this.daemonError = "Could not start QMD. Check that qmd is installed.";
+			console.error("[QMD] Failed to connect MCP client:", err);
+			this.mcpError = "Could not start QMD. Check that qmd is installed.";
 			this.statusBar?.setDaemonDown();
 			new Notice(
-				"QMD Search: Could not start QMD daemon. Check that qmd is installed and on your PATH.",
+				"QMD Search: Could not start QMD. Check that qmd is installed and on your PATH.",
 				10000
 			);
 		}
 	}
 
-	async ensureDaemon(): Promise<void> {
-		if (this.daemon?.isRunning()) return;
-		console.log("[QMD] Daemon not running, restarting on demand");
+	async ensureConnection(): Promise<void> {
+		if (this.mcpClient?.isConnected()) return;
+		console.log("[QMD] MCP not connected, reconnecting on demand");
 		this.restartAttempts = 0;
-		await this.startDaemon();
+		await this.connectMcp();
 	}
 
 	private async attemptRestart(): Promise<void> {
 		this.restartAttempts++;
 		if (this.restartAttempts > this.MAX_RESTART_ATTEMPTS) {
-			new Notice("QMD Search: Daemon keeps crashing. Please restart Obsidian or check QMD.", 10000);
+			new Notice("QMD Search: QMD keeps crashing. Please restart Obsidian or check QMD.", 10000);
 			return;
 		}
 		console.log(`[QMD] Attempting restart (${this.restartAttempts}/${this.MAX_RESTART_ATTEMPTS})`);
-		await this.startDaemon();
+		await this.connectMcp();
 	}
 
 	private async activateView(): Promise<void> {
