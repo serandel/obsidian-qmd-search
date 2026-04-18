@@ -136,9 +136,9 @@ describe("QmdClient", () => {
 			expect(await client().healthCheck()).toBe(true);
 		});
 
-		it("returns false when server responds not ok", async () => {
+		it("returns true when server responds with any status", async () => {
 			serverResponse = { status: 500, body: "{}" };
-			expect(await client().healthCheck()).toBe(false);
+			expect(await client().healthCheck()).toBe(true);
 		});
 
 		it("returns false when server unreachable", async () => {
@@ -146,10 +146,10 @@ describe("QmdClient", () => {
 			expect(await unreachable.healthCheck()).toBe(false);
 		});
 
-		it("hits /status endpoint", async () => {
+		it("hits / endpoint", async () => {
 			serverResponse = { status: 200, body: "{}" };
 			await client().healthCheck();
-			expect(lastRequest.path).toBe("/status");
+			expect(lastRequest.path).toBe("/");
 		});
 	});
 

@@ -31,6 +31,7 @@ export class QmdStatusBar {
 	}
 
 	update(state: IndexerState): void {
+		this.el.removeClass("qmd-status-bar-down");
 		switch (state.phase) {
 			case "idle":
 				this.el.setText("QMD \u2713");

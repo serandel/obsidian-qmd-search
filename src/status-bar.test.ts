@@ -19,12 +19,15 @@ vi.mock("obsidian", () => ({
 
 function createMockElement(): HTMLElement {
 	const listeners: Record<string, EventListener[]> = {};
+	const classes = new Set<string>();
 	const el = {
 		textContent: "",
 		title: "",
 		onclick: null as (() => void) | null,
 		setText(text: string) { this.textContent = text; },
-		addClass(_cls: string) {},
+		addClass(cls: string) { classes.add(cls); },
+		removeClass(cls: string) { classes.delete(cls); },
+		hasClass(cls: string) { return classes.has(cls); },
 		addEventListener(event: string, handler: EventListener) {
 			(listeners[event] ??= []).push(handler);
 		},
@@ -102,5 +105,14 @@ describe("QmdStatusBar", () => {
 		bar.update({ phase: "idle" });
 		(el.onclick as () => void)();
 		expect(searchCb).toHaveBeenCalledOnce();
+	});
+
+	it("update clears daemon-down styling", () => {
+		const el = createMockElement();
+		const bar = new QmdStatusBar(el);
+		bar.setDaemonDown();
+		expect((el as any).hasClass("qmd-status-bar-down")).toBe(true);
+		bar.update({ phase: "updating" });
+		expect((el as any).hasClass("qmd-status-bar-down")).toBe(false);
 	});
 });

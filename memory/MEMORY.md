@@ -5,3 +5,4 @@
 - [Write memory to repo path](feedback_memory_path.md) — use repo's `memory/` dir, not `~/.claude/projects/`
 - [Tests with every commit](feedback_test_before_commit.md) — include tests for changes + run `npm test` before commit
 - [No real note names in public content](feedback_no_real_note_names.md) — use foo/bar/baz placeholders instead
+- [Cross-platform solutions](feedback_cross_platform.md) — all code must work on Windows, macOS, and Linux

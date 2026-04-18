@@ -28,6 +28,10 @@ Results are grouped by match type. Keyword matches appear first; semantic matche
 - **Collection** — QMD collection name (default: `obsidian`)
 - **Max results** — results per search stage (default: 20)
 
+## Architecture Note
+
+The QMD MCP server currently only exposes read-only tools (query, get, status). Index updates and embedding generation are performed via the CLI (`qmd update`, `qmd embed`) as separate processes. This means the plugin manages two interfaces to QMD: the daemon for search and the CLI for indexing. See [tobi/qmd#587](https://github.com/tobi/qmd/issues/587) for a request to add indexing tools to the MCP server.
+
 ## Development
 
 ```bash

@@ -58,10 +58,11 @@ export class QmdClient {
 		return new Promise((resolve) => {
 			const timeout = setTimeout(() => resolve(false), 2000);
 			const req = httpRequest(
-				{ hostname: this.host, port: this.port, path: "/status", method: "GET" },
+				{ hostname: this.host, port: this.port, path: "/", method: "GET" },
 				(res) => {
 					clearTimeout(timeout);
-					resolve(res.statusCode === 200);
+					// Any HTTP response means the server is listening
+					resolve(true);
 					res.resume();
 				}
 			);
