@@ -33,7 +33,7 @@ export class QmdMcpClient {
 		};
 
 		this.client = new Client(
-			{ name: "obsidian-qmd-search", version: "1.0.0" },
+			{ name: "qmd-search", version: "1.0.0" },
 		);
 
 		await this.client.connect(this.transport);
