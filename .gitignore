@@ -2,3 +2,4 @@
 node_modules/
 main.js
 qmd.pid
+.claude/settings.local.json
