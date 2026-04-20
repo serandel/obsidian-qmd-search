@@ -13,8 +13,8 @@ Results are grouped by match type. Keyword matches appear first; semantic matche
 ## Prerequisites
 
 - [QMD](https://github.com/tobi/qmd) installed and on your PATH
-- An existing QMD collection for your vault (e.g. `qmd collection add ~/your-vault --name obsidian`)
-- Embeddings generated (`qmd embed`)
+
+The plugin will guide you through the rest of the setup on first use: it detects whether a QMD collection exists for your vault and offers to create one, then handles indexing and embedding generation.
 
 ## Installation
 

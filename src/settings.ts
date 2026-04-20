@@ -23,6 +23,7 @@ export class QmdSettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.qmdBinaryPath = value;
 						await this.plugin.saveSettings();
+						this.plugin.runPrerequisiteCheck();
 					})
 			);
 
@@ -31,12 +32,13 @@ export class QmdSettingsTab extends PluginSettingTab {
 			.setDesc("QMD collection name to search")
 			.addText((text) =>
 				text
-					.setPlaceholder("obsidian")
-					.setValue(this.plugin.settings.collection)
-					.onChange(async (value) => {
-						this.plugin.settings.collection = value;
-						await this.plugin.saveSettings();
-					})
+					.setValue(this.plugin.settings.collection || "No collection selected")
+					.setDisabled(true)
+			)
+			.addButton((btn) =>
+				btn.setButtonText("Change").onClick(() => {
+					this.plugin.openCollectionChooser();
+				})
 			);
 
 		new Setting(containerEl)

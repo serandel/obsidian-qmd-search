@@ -240,3 +240,15 @@
 	font-size: 13px;
 	color: var(--text-muted);
 }
+
+.qmd-collection-tag {
+	font-size: var(--font-smallest);
+	color: var(--text-accent);
+	font-weight: var(--font-normal);
+}
+
+.qmd-vault-path {
+	color: var(--text-muted);
+	font-size: var(--font-small);
+	margin-bottom: 0;
+}

@@ -5,6 +5,7 @@ export class QmdStatusBar {
 	private lastError = "";
 	private openSettings: (() => void) | null = null;
 	private openSearch: (() => void) | null = null;
+	private recheck: (() => void) | null = null;
 
 	constructor(private el: HTMLElement) {
 		this.el.addClass("qmd-status-bar");
@@ -28,6 +29,10 @@ export class QmdStatusBar {
 
 	onOpenSearch(callback: () => void): void {
 		this.openSearch = callback;
+	}
+
+	onRecheck(callback: () => void): void {
+		this.recheck = callback;
 	}
 
 	update(state: IndexerState): void {
@@ -64,8 +69,8 @@ export class QmdStatusBar {
 	setDaemonDown(): void {
 		this.el.setText("QMD \u2717");
 		this.el.addClass("qmd-status-bar-down");
-		this.el.title = "QMD is not connected — click to open settings";
-		this.el.onclick = () => this.openSettings?.();
+		this.el.title = "QMD is not connected — click to check setup";
+		this.el.onclick = () => this.recheck?.();
 	}
 
 	clearDaemonDown(): void {

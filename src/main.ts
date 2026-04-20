@@ -5,6 +5,12 @@ import { QmdIndexer } from "./indexer";
 import { QmdStatusBar } from "./status-bar";
 import { QmdSearchView, VIEW_TYPE_QMD_SEARCH } from "./view";
 import { DEFAULT_SETTINGS, type QmdSettings } from "./types";
+import { checkPrerequisites, type CollectionInfo } from "./prerequisite-checker";
+import {
+	QmdNotFoundModal,
+	CollectionChooserModal,
+	ReadyToIndexModal,
+} from "./onboarding-modals";
 
 const QMD_ICON = "qmd-search";
 const QMD_ICON_SVG = `<circle cx="46" cy="46" r="33" fill="none" stroke="currentColor" stroke-width="6"/><line x1="52" y1="52" x2="88" y2="88" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>`;
@@ -27,10 +33,8 @@ export default class QmdPlugin extends Plugin {
 		// Status bar
 		const statusBarEl = this.addStatusBarItem();
 		this.statusBar = new QmdStatusBar(statusBarEl);
-		this.statusBar.onOpenSettings(() => {
-			(this.app as any).setting.open();
-			(this.app as any).setting.openTabById(this.manifest.id);
-		});
+		this.statusBar.onOpenSettings(() => this.openSettings());
+		this.statusBar.onRecheck(() => this.runPrerequisiteCheck());
 		this.statusBar.onOpenSearch(() => this.activateView());
 
 		// Indexer (MCP client set after connection)
@@ -149,26 +153,95 @@ export default class QmdPlugin extends Plugin {
 			this.indexer?.setMcpClient(this.mcpClient);
 			this.statusBar?.clearDaemonDown();
 
-			// Async warmup — don't block. Run initial index update after warmup
-			// completes so they don't compete for GPU resources.
-			if (this.settings.autoIndexOnStartup) {
-				this.mcpClient.warmup(this.settings.collection)
-					.then(() => this.indexer?.requestUpdate())
-					.catch(() => this.indexer?.requestUpdate());
-			} else {
-				this.mcpClient.warmup(this.settings.collection).catch(() => {});
-			}
-
 			console.log("[QMD] MCP client connected");
+
+			// Run prerequisite check, then proceed with warmup/indexing
+			await this.runPrerequisiteCheck();
 		} catch (err) {
 			console.error("[QMD] Failed to connect MCP client:", err);
 			this.mcpError = "Could not start QMD. Check that qmd is installed.";
 			this.statusBar?.setDaemonDown();
-			new Notice(
-				"QMD Search: Could not start QMD. Check that qmd is installed and on your PATH.",
-				10000
-			);
+			new QmdNotFoundModal(this.app, () => this.openSettings()).open();
 		}
+	}
+
+	async runPrerequisiteCheck(): Promise<void> {
+		const vaultPath = (this.app.vault.adapter as any).basePath as string;
+		const result = await checkPrerequisites(
+			this.settings.qmdBinaryPath,
+			vaultPath,
+			this.mcpConnected,
+		);
+
+		console.log("[QMD] Prerequisite check result:", result.status);
+
+		switch (result.status) {
+			case "ready":
+				// Auto-update collection setting if it differs
+				if (this.settings.collection !== result.collection) {
+					this.settings.collection = result.collection;
+					await this.saveSettings();
+					console.log(`[QMD] Auto-selected collection: ${result.collection}`);
+				}
+				this.startWarmupAndIndex();
+				break;
+
+			case "binary-missing":
+				new QmdNotFoundModal(this.app, () => this.openSettings()).open();
+				break;
+
+			case "pick-collection":
+			case "no-collection":
+				this.openCollectionChooser(vaultPath, result.candidates);
+				break;
+
+			case "needs-indexing":
+				if (this.settings.collection !== result.collection) {
+					this.settings.collection = result.collection;
+					await this.saveSettings();
+				}
+				new ReadyToIndexModal(this.app, () => {
+					this.indexer?.requestUpdate();
+				}).open();
+				break;
+		}
+	}
+
+	openCollectionChooser(vaultPath?: string, collections?: CollectionInfo[] | null): void {
+		const vault = vaultPath ?? (this.app.vault.adapter as any).basePath as string;
+		new CollectionChooserModal(
+			this.app,
+			vault,
+			this.settings.qmdBinaryPath,
+			collections ?? null,
+			async (name) => {
+				this.settings.collection = name;
+				await this.saveSettings();
+				if (this.mcpConnected) {
+					this.startWarmupAndIndex();
+				} else {
+					new ReadyToIndexModal(this.app, () => {
+						this.indexer?.requestUpdate();
+					}).open();
+				}
+			},
+		).open();
+	}
+
+	private startWarmupAndIndex(): void {
+		if (!this.mcpClient) return;
+		if (this.settings.autoIndexOnStartup) {
+			this.mcpClient.warmup(this.settings.collection)
+				.then(() => this.indexer?.requestUpdate())
+				.catch(() => this.indexer?.requestUpdate());
+		} else {
+			this.mcpClient.warmup(this.settings.collection).catch(() => {});
+		}
+	}
+
+	private openSettings(): void {
+		(this.app as any).setting.open();
+		(this.app as any).setting.openTabById(this.manifest.id);
 	}
 
 	async ensureConnection(): Promise<void> {
