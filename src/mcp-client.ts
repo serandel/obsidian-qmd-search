@@ -129,7 +129,10 @@ export class QmdMcpClient {
 			const msg = Array.isArray(result.content)
 				? result.content.map((c: { text?: string }) => c.text ?? "").join("")
 				: String(result.content);
-			throw new Error(`QMD query failed: ${msg}`);
+			const isTimeout = /timed?\s*out/i.test(msg);
+			const err = new Error(`QMD query failed: ${msg}`);
+			if (isTimeout) err.name = "TimeoutError";
+			throw err;
 		}
 
 		const structured = result.structuredContent as { results?: QmdSearchResult[] } | undefined;

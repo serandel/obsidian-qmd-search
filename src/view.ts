@@ -18,6 +18,11 @@ export class QmdSearchView extends ItemView {
 	private lastFiredLexQuery: string = "";
 	private errorMessage: string | null = null;
 	private errorRetryType: "lex" | "hybrid" | null = null;
+
+	private static isTimeoutError(err: unknown): boolean {
+		if (!(err instanceof Error)) return false;
+		return err.name === "TimeoutError" || /timed?\s*out/i.test(err.message);
+	}
 	private hybridButton: HTMLButtonElement | null = null;
 	private lexLoading: boolean = false;
 	private hybridLoading: boolean = false;
@@ -144,7 +149,7 @@ export class QmdSearchView extends ItemView {
 			if ((err as Error).name === "AbortError") return;
 			console.error("[QMD] Lex query failed:", err);
 			if (query !== this.currentQuery) return;
-			if ((err as Error).name === "TimeoutError") {
+			if (QmdSearchView.isTimeoutError(err)) {
 				this.errorMessage = "Search timed out — QMD may still be warming up";
 				this.errorRetryType = "lex";
 			} else {
@@ -152,7 +157,7 @@ export class QmdSearchView extends ItemView {
 				this.errorRetryType = null;
 				this.renderResults();
 				await this.plugin.ensureConnection();
-				this.errorMessage = null;
+				this.errorMessage = "Search failed";
 				this.errorRetryType = "lex";
 			}
 		} finally {
@@ -185,7 +190,7 @@ export class QmdSearchView extends ItemView {
 			if ((err as Error).name === "AbortError") return;
 			console.error("[QMD] Hybrid query failed:", err);
 			if (query !== this.currentQuery) return;
-			if ((err as Error).name === "TimeoutError") {
+			if (QmdSearchView.isTimeoutError(err)) {
 				this.errorMessage = "Semantic search timed out — QMD may still be warming up";
 				this.errorRetryType = "hybrid";
 			} else {
@@ -193,7 +198,7 @@ export class QmdSearchView extends ItemView {
 				this.errorRetryType = null;
 				this.renderResults();
 				await this.plugin.ensureConnection();
-				this.errorMessage = null;
+				this.errorMessage = "Semantic search failed";
 				this.errorRetryType = "hybrid";
 			}
 		} finally {
@@ -230,6 +235,16 @@ export class QmdSearchView extends ItemView {
 						this.fireLexQuery(this.currentQuery);
 					}
 				});
+			}
+			// Show keyword results below the error if we have them
+			if (this.results.length > 0 && this.matchType === "keyword") {
+				const section = this.resultsContainer.createEl("div", {
+					cls: "qmd-section qmd-section-keyword",
+				});
+				section.createEl("div", {
+					cls: "qmd-section-header",
+				}).createSpan({ text: `Keyword matches (${this.results.length})` });
+				this.renderResultsInto(section, this.results, "keyword");
 			}
 			return;
 		}

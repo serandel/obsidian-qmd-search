@@ -161,6 +161,37 @@ describe("QmdMcpClient", () => {
 			).rejects.toThrow("QMD query failed");
 		});
 
+		it("throws TimeoutError when tool error message contains 'timed out'", async () => {
+			mockCallTool.mockResolvedValueOnce({
+				isError: true,
+				content: [{ type: "text", text: "Request timed out" }],
+			});
+
+			await client.connect();
+			try {
+				await client.searchLex("test", "obsidian", 10);
+				expect.unreachable("should have thrown");
+			} catch (err) {
+				expect((err as Error).name).toBe("TimeoutError");
+				expect((err as Error).message).toContain("timed out");
+			}
+		});
+
+		it("throws TimeoutError when tool error message contains 'time out'", async () => {
+			mockCallTool.mockResolvedValueOnce({
+				isError: true,
+				content: [{ type: "text", text: "request time out" }],
+			});
+
+			await client.connect();
+			try {
+				await client.searchLex("test", "obsidian", 10);
+				expect.unreachable("should have thrown");
+			} catch (err) {
+				expect((err as Error).name).toBe("TimeoutError");
+			}
+		});
+
 		it("returns empty array when no structuredContent", async () => {
 			mockCallTool.mockResolvedValueOnce({
 				isError: false,
