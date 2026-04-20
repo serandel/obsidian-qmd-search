@@ -40,6 +40,10 @@ npm run dev    # watch mode
 npm run build  # production build
 ```
 
+## Roadmap
+
+- **QMD contexts** — upcoming QMD feature that will enhance search with contextual understanding
+
 ## License
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
