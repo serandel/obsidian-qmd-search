@@ -22,9 +22,11 @@ Once QMD is available, the plugin guides you through the rest of the setup on fi
 
 ## Settings
 
-- **QMD binary path** — path to `qmd` (default: `qmd`)
-- **Collection** — QMD collection name (default: `obsidian`)
-- **Max results** — results per search stage (default: 20)
+- QMD binary path and collection selection
+- Max results per query
+- Automatic indexing on startup and on file changes
+- Manual index trigger
+- Advanced: debounce delay, process priority for indexing
 
 ## Architecture Note
 
