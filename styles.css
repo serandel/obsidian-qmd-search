@@ -195,8 +195,30 @@
 .qmd-error {
 	text-align: center;
 	color: var(--text-error);
-	padding: 12px;
+	padding: 20px 12px 24px;
 	font-size: 13px;
+}
+
+.qmd-retry-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	padding: 8px;
+	margin: 16px 0 12px;
+	border: 1px solid var(--interactive-accent);
+	border-radius: 4px;
+	background: transparent;
+	color: var(--interactive-accent);
+	font-size: 13px;
+	line-height: 1;
+	box-sizing: border-box;
+	cursor: pointer;
+}
+
+.qmd-retry-button:hover {
+	background: var(--interactive-accent);
+	color: var(--background-primary);
 }
 
 .qmd-links {

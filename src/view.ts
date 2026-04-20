@@ -17,6 +17,7 @@ export class QmdSearchView extends ItemView {
 	private currentQuery: string = "";
 	private lastFiredLexQuery: string = "";
 	private errorMessage: string | null = null;
+	private errorRetryType: "lex" | "hybrid" | null = null;
 	private hybridButton: HTMLButtonElement | null = null;
 	private lexLoading: boolean = false;
 	private hybridLoading: boolean = false;
@@ -85,6 +86,7 @@ export class QmdSearchView extends ItemView {
 		}
 
 		this.errorMessage = null;
+		this.errorRetryType = null;
 		this.results = [];
 		this.matchType = "keyword";
 		this.hybridTriggered = false;
@@ -144,11 +146,14 @@ export class QmdSearchView extends ItemView {
 			if (query !== this.currentQuery) return;
 			if ((err as Error).name === "TimeoutError") {
 				this.errorMessage = "Search timed out — QMD may still be warming up";
+				this.errorRetryType = "lex";
 			} else {
 				this.errorMessage = "Search failed — restarting QMD…";
+				this.errorRetryType = null;
 				this.renderResults();
 				await this.plugin.ensureConnection();
 				this.errorMessage = null;
+				this.errorRetryType = "lex";
 			}
 		} finally {
 			if (query === this.currentQuery) {
@@ -182,11 +187,14 @@ export class QmdSearchView extends ItemView {
 			if (query !== this.currentQuery) return;
 			if ((err as Error).name === "TimeoutError") {
 				this.errorMessage = "Semantic search timed out — QMD may still be warming up";
+				this.errorRetryType = "hybrid";
 			} else {
 				this.errorMessage = "Hybrid search failed — restarting QMD…";
+				this.errorRetryType = null;
 				this.renderResults();
 				await this.plugin.ensureConnection();
 				this.errorMessage = null;
+				this.errorRetryType = "hybrid";
 			}
 		} finally {
 			if (query === this.currentQuery) {
@@ -201,10 +209,28 @@ export class QmdSearchView extends ItemView {
 		this.resultsContainer.empty();
 
 		if (this.errorMessage) {
-			this.resultsContainer.createEl("div", {
-				text: this.errorMessage,
+			const errorEl = this.resultsContainer.createEl("div", {
 				cls: "qmd-error",
 			});
+			errorEl.createEl("span", { text: this.errorMessage });
+			if (this.errorRetryType) {
+				const retryBtn = errorEl.createEl("button", {
+					text: "Retry",
+					cls: "qmd-retry-button",
+				});
+				const retryType = this.errorRetryType;
+				retryBtn.addEventListener("click", () => {
+					this.errorMessage = null;
+					this.errorRetryType = null;
+					if (retryType === "hybrid") {
+						this.hybridTriggered = false;
+						this.triggerHybridSearch();
+					} else {
+						this.lastFiredLexQuery = "";
+						this.fireLexQuery(this.currentQuery);
+					}
+				});
+			}
 			return;
 		}
 
