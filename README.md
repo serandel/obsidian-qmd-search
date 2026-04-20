@@ -6,15 +6,13 @@ An Obsidian plugin that adds QMD-powered search with progressive refinement. Key
 
 1. Type a query in the QMD Search sidebar
 2. **Keyword matches** appear instantly via BM25 full-text search
-3. **Semantic matches** are progressively added via QMD's hybrid search (query expansion + LLM reranking)
-
-Results are grouped by match type. Keyword matches appear first; semantic matches are added without disturbing existing results.
+3. **Semantic matches** replace keyword results as they become available via QMD's hybrid search (query expansion + LLM reranking)
 
 ## Prerequisites
 
-- [QMD](https://github.com/tobi/qmd) installed and on your PATH
+The plugin requires [QMD](https://github.com/tobi/qmd) to work. If QMD is not installed or not on your PATH, the plugin will detect this and point you to the installation instructions.
 
-The plugin will guide you through the rest of the setup on first use: it detects whether a QMD collection exists for your vault and offers to create one, then handles indexing and embedding generation.
+Once QMD is available, the plugin guides you through the rest of the setup on first use: it detects whether a QMD collection exists for your vault and offers to create one, then handles indexing and embedding generation.
 
 ## Installation
 
