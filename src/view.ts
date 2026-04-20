@@ -71,6 +71,8 @@ export class QmdSearchView extends ItemView {
 		this.resultsContainer = container.createEl("div", {
 			cls: "qmd-results-container",
 		});
+
+		this.renderEmptyState();
 	}
 
 	async onClose(): Promise<void> {
@@ -249,7 +251,10 @@ export class QmdSearchView extends ItemView {
 			return;
 		}
 
-		if (!this.currentQuery) return;
+		if (!this.currentQuery) {
+			this.renderEmptyState();
+			return;
+		}
 
 		if (this.hybridLoading) {
 			// Semantic spinner on top
@@ -307,6 +312,31 @@ export class QmdSearchView extends ItemView {
 		});
 		wrapper.createEl("div", { cls: "qmd-spinner" });
 		wrapper.createEl("span", { text: label, cls: "qmd-spinner-label" });
+	}
+
+	private renderEmptyState(): void {
+		if (!this.resultsContainer) return;
+		const wrapper = this.resultsContainer.createEl("div", {
+			cls: "qmd-empty-state",
+		});
+
+		wrapper.createEl("div", {
+			text: "How to search",
+			cls: "qmd-empty-heading",
+		});
+
+		const tips = [
+			{ label: "Type", description: "to search by keywords" },
+			{ label: "Enter", description: "to also search semantically" },
+			{ label: "Click", description: "a result to open the note" },
+		];
+
+		const list = wrapper.createEl("div", { cls: "qmd-empty-tips" });
+		for (const tip of tips) {
+			const row = list.createEl("div", { cls: "qmd-empty-tip" });
+			row.createEl("kbd", { text: tip.label });
+			row.createEl("span", { text: tip.description });
+		}
 	}
 
 	private renderResultsInto(
