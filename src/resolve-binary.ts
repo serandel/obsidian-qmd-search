@@ -122,17 +122,19 @@ function scanVersionManagerInstalls(binary: string): string | null {
 				try {
 					// e.g. ~/.asdf/installs/nodejs/22.0.0, ...
 					for (const version of readdirSync(toolDir)) {
-						// Check direct bin/ (for tools installed as the runtime itself)
-						const directBin = join(toolDir, version, "bin", binary);
+						const versionDir = join(toolDir, version);
+						// Check bin/ — covers direct installs and npm global
+						// symlinks (existsSync follows symlinks)
+						const directBin = join(versionDir, "bin", binary);
 						if (existsSync(directBin)) {
 							console.log(`[QMD] Found '${binary}' in version manager installs: ${directBin}`);
 							return directBin;
 						}
-						// Check .npm/bin/ (for globally installed npm packages)
-						const npmBin = join(toolDir, version, ".npm", "bin", binary);
-						if (existsSync(npmBin)) {
-							console.log(`[QMD] Found '${binary}' in version manager installs: ${npmBin}`);
-							return npmBin;
+						// Check lib/node_modules/.bin/ (npm global packages)
+						const npmDotBin = join(versionDir, "lib", "node_modules", ".bin", binary);
+						if (existsSync(npmDotBin)) {
+							console.log(`[QMD] Found '${binary}' in version manager installs: ${npmDotBin}`);
+							return npmDotBin;
 						}
 					}
 				} catch {
