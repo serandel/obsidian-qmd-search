@@ -230,12 +230,11 @@ export default class QmdPlugin extends Plugin {
 
 	private startWarmupAndIndex(): void {
 		if (!this.mcpClient) return;
+		// Warmup and indexing run in parallel — indexing shouldn't wait for
+		// warmup, especially on new collections where warmup will fail.
+		this.mcpClient.warmup(this.settings.collection).catch(() => {});
 		if (this.settings.autoIndexOnStartup) {
-			this.mcpClient.warmup(this.settings.collection)
-				.then(() => this.indexer?.requestUpdate())
-				.catch(() => this.indexer?.requestUpdate());
-		} else {
-			this.mcpClient.warmup(this.settings.collection).catch(() => {});
+			this.indexer?.requestUpdate();
 		}
 	}
 
