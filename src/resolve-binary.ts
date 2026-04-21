@@ -11,8 +11,13 @@ const isWindows = process.platform === "win32";
  * depending on the platform.
  */
 export function resolveBinaryPath(binary: string): string {
+	console.log(`[QMD] resolveBinaryPath('${binary}') called`);
+
 	// Already absolute — return as-is
-	if (isWindows ? /^[A-Za-z]:\\/.test(binary) : binary.startsWith("/")) return binary;
+	if (isWindows ? /^[A-Za-z]:\\/.test(binary) : binary.startsWith("/")) {
+		console.log(`[QMD] Path is already absolute: '${binary}'`);
+		return binary;
+	}
 
 	// Platform-specific shell-based resolution
 	const resolved = isWindows ? resolveViaWhere(binary) : resolveViaShell(binary);
@@ -74,6 +79,8 @@ function resolveShim(shell: string, flags: string[], binary: string, resolved: s
 	const isShim = shimDirs.some((d) => resolved.includes(d));
 	if (!isShim) return null;
 
+	console.log(`[QMD] Detected version manager shim: ${resolved}`);
+
 	// Try version-manager-specific resolution commands first
 	const commands = [
 		`asdf which ${binary}`,   // asdf
@@ -85,14 +92,16 @@ function resolveShim(shell: string, flags: string[], binary: string, resolved: s
 				encoding: "utf-8",
 				timeout: 5000,
 			}).trim();
+			console.log(`[QMD] '${cmd}' returned: '${real}', exists: ${existsSync(real)}`);
 			if (real && existsSync(real)) {
 				return real;
 			}
-		} catch {
-			// Shell-based resolution failed — try filesystem scan below
+		} catch (err) {
+			console.log(`[QMD] '${cmd}' failed: ${(err as Error).message?.split("\n")[0]}`);
 		}
 	}
 
+	console.log(`[QMD] Shell-based shim resolution failed, trying filesystem scan`);
 	// Filesystem scan: look through version manager installs directories
 	// for the actual binary (works even when the version manager itself
 	// isn't available as a command).
@@ -114,19 +123,25 @@ function scanVersionManagerInstalls(binary: string): string | null {
 	];
 
 	for (const root of installRoots) {
-		if (!existsSync(root)) continue;
+		if (!existsSync(root)) {
+			console.log(`[QMD] Installs root not found: ${root}`);
+			continue;
+		}
 		try {
-			// e.g. ~/.asdf/installs/nodejs, ~/.asdf/installs/ruby, ...
-			for (const tool of readdirSync(root)) {
+			const tools = readdirSync(root);
+			console.log(`[QMD] Scanning ${root}, tools: ${tools.join(", ")}`);
+			for (const tool of tools) {
 				const toolDir = join(root, tool);
 				try {
-					// e.g. ~/.asdf/installs/nodejs/22.0.0, ...
-					for (const version of readdirSync(toolDir)) {
+					const versions = readdirSync(toolDir);
+					for (const version of versions) {
 						const versionDir = join(toolDir, version);
 						// Check bin/ — covers direct installs and npm global
 						// symlinks (existsSync follows symlinks)
 						const directBin = join(versionDir, "bin", binary);
-						if (existsSync(directBin)) {
+						const directExists = existsSync(directBin);
+						console.log(`[QMD] Checking ${directBin}: ${directExists}`);
+						if (directExists) {
 							console.log(`[QMD] Found '${binary}' in version manager installs: ${directBin}`);
 							return directBin;
 						}
@@ -145,6 +160,7 @@ function scanVersionManagerInstalls(binary: string): string | null {
 			// Can't read installs directory
 		}
 	}
+	console.log(`[QMD] Filesystem scan found nothing`);
 	return null;
 }
 
