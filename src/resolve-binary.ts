@@ -1,5 +1,5 @@
 import { execFileSync } from "child_process";
-import { existsSync } from "fs";
+import { existsSync, readdirSync } from "fs";
 import { delimiter, dirname, join } from "path";
 
 const isWindows = process.platform === "win32";
@@ -66,13 +66,15 @@ function resolveViaShell(binary: string): string | null {
 /**
  * If a resolved path is a version-manager shim (asdf, mise), resolve to the
  * real binary so we can spawn it directly without the version manager on PATH.
+ * Falls back to scanning the installs directory when shell-based resolution
+ * fails (e.g. when asdf is a shell function unavailable from Electron).
  */
 function resolveShim(shell: string, flags: string[], binary: string, resolved: string): string | null {
 	const shimDirs = [".asdf/shims", ".local/share/mise/shims"];
 	const isShim = shimDirs.some((d) => resolved.includes(d));
 	if (!isShim) return null;
 
-	// Try version-manager-specific resolution commands
+	// Try version-manager-specific resolution commands first
 	const commands = [
 		`asdf which ${binary}`,   // asdf
 		`mise which ${binary}`,   // mise
@@ -87,7 +89,58 @@ function resolveShim(shell: string, flags: string[], binary: string, resolved: s
 				return real;
 			}
 		} catch {
-			// Try next command
+			// Shell-based resolution failed — try filesystem scan below
+		}
+	}
+
+	// Filesystem scan: look through version manager installs directories
+	// for the actual binary (works even when the version manager itself
+	// isn't available as a command).
+	return scanVersionManagerInstalls(binary);
+}
+
+/**
+ * Scan asdf/mise installs directories for a binary. This handles cases where
+ * the binary is installed as a global npm/pip/etc. package under a managed
+ * runtime (e.g. qmd installed via `npm install -g` under asdf's Node).
+ */
+function scanVersionManagerInstalls(binary: string): string | null {
+	const home = process.env.HOME;
+	if (!home) return null;
+
+	const installRoots = [
+		join(home, ".asdf", "installs"),
+		join(home, ".local", "share", "mise", "installs"),
+	];
+
+	for (const root of installRoots) {
+		if (!existsSync(root)) continue;
+		try {
+			// e.g. ~/.asdf/installs/nodejs, ~/.asdf/installs/ruby, ...
+			for (const tool of readdirSync(root)) {
+				const toolDir = join(root, tool);
+				try {
+					// e.g. ~/.asdf/installs/nodejs/22.0.0, ...
+					for (const version of readdirSync(toolDir)) {
+						// Check direct bin/ (for tools installed as the runtime itself)
+						const directBin = join(toolDir, version, "bin", binary);
+						if (existsSync(directBin)) {
+							console.log(`[QMD] Found '${binary}' in version manager installs: ${directBin}`);
+							return directBin;
+						}
+						// Check .npm/bin/ (for globally installed npm packages)
+						const npmBin = join(toolDir, version, ".npm", "bin", binary);
+						if (existsSync(npmBin)) {
+							console.log(`[QMD] Found '${binary}' in version manager installs: ${npmBin}`);
+							return npmBin;
+						}
+					}
+				} catch {
+					// Can't read tool versions directory
+				}
+			}
+		} catch {
+			// Can't read installs directory
 		}
 	}
 	return null;
