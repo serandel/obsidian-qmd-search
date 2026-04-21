@@ -45,12 +45,49 @@ function resolveViaShell(binary: string): string | null {
 					timeout: 5000,
 				}).trim();
 				if (resolved && existsSync(resolved)) {
+					// asdf/mise shims are wrapper scripts that need the version
+					// manager on PATH — resolve to the real binary instead.
+					const real = resolveShim(shell, flags, binary, resolved);
+					if (real) {
+						console.log(`[QMD] Resolved '${binary}' → '${real}' (shim at ${resolved}, via ${shell} ${flags.join(" ")})`);
+						return real;
+					}
 					console.log(`[QMD] Resolved '${binary}' → '${resolved}' (via ${shell} ${flags.join(" ")})`);
 					return resolved;
 				}
 			} catch {
 				// Try next combination
 			}
+		}
+	}
+	return null;
+}
+
+/**
+ * If a resolved path is a version-manager shim (asdf, mise), resolve to the
+ * real binary so we can spawn it directly without the version manager on PATH.
+ */
+function resolveShim(shell: string, flags: string[], binary: string, resolved: string): string | null {
+	const shimDirs = [".asdf/shims", ".local/share/mise/shims"];
+	const isShim = shimDirs.some((d) => resolved.includes(d));
+	if (!isShim) return null;
+
+	// Try version-manager-specific resolution commands
+	const commands = [
+		`asdf which ${binary}`,   // asdf
+		`mise which ${binary}`,   // mise
+	];
+	for (const cmd of commands) {
+		try {
+			const real = execFileSync(shell, [...flags, cmd], {
+				encoding: "utf-8",
+				timeout: 5000,
+			}).trim();
+			if (real && existsSync(real)) {
+				return real;
+			}
+		} catch {
+			// Try next command
 		}
 	}
 	return null;
@@ -92,11 +129,7 @@ function getKnownPaths(binary: string): string[] {
 		"/opt/homebrew/bin/" + binary,
 		"/home/linuxbrew/.linuxbrew/bin/" + binary,
 		"/usr/local/bin/" + binary,
-		...(home ? [
-			join(home, ".local", "bin", binary),
-			join(home, ".asdf", "shims", binary),
-			join(home, ".local", "share", "mise", "shims", binary),
-		] : []),
+		...(home ? [join(home, ".local", "bin", binary)] : []),
 	];
 }
 
