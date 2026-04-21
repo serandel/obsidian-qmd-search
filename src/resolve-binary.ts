@@ -13,9 +13,19 @@ const isWindows = process.platform === "win32";
 export function resolveBinaryPath(binary: string): string {
 	console.log(`[QMD] resolveBinaryPath('${binary}') called`);
 
-	// Already absolute — return as-is
+	// Already absolute — but check if it's a version-manager shim that
+	// needs further resolution to the real binary.
 	if (isWindows ? /^[A-Za-z]:\\/.test(binary) : binary.startsWith("/")) {
-		console.log(`[QMD] Path is already absolute: '${binary}'`);
+		const shimDirs = [".asdf/shims", ".local/share/mise/shims"];
+		if (shimDirs.some((d) => binary.includes(d))) {
+			console.log(`[QMD] Absolute path is a version manager shim: '${binary}'`);
+			const real = scanVersionManagerInstalls(binary.split("/").pop()!);
+			if (real) {
+				console.log(`[QMD] Resolved shim to real binary: '${real}'`);
+				return real;
+			}
+			console.warn(`[QMD] Could not resolve shim '${binary}', will try as-is`);
+		}
 		return binary;
 	}
 
