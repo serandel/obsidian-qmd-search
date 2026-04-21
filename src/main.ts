@@ -161,7 +161,7 @@ export default class QmdPlugin extends Plugin {
 			console.error("[QMD] Failed to connect MCP client:", err);
 			this.mcpError = "Could not start QMD. Check that qmd is installed.";
 			this.statusBar?.setDaemonDown();
-			new QmdNotFoundModal(this.app, () => this.openSettings()).open();
+			new QmdNotFoundModal(this.app, () => this.openSettings(), () => this.connectMcp()).open();
 		}
 	}
 
@@ -187,7 +187,7 @@ export default class QmdPlugin extends Plugin {
 				break;
 
 			case "binary-missing":
-				new QmdNotFoundModal(this.app, () => this.openSettings()).open();
+				new QmdNotFoundModal(this.app, () => this.openSettings(), () => this.connectMcp()).open();
 				break;
 
 			case "pick-collection":

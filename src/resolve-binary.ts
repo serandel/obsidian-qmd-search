@@ -33,19 +33,24 @@ export function resolveBinaryPath(binary: string): string {
 /** Try each login shell to resolve the binary (Linux/macOS). */
 function resolveViaShell(binary: string): string | null {
 	const shells = ["/bin/zsh", "/bin/bash", "/bin/sh"];
-	for (const shell of shells) {
-		if (!existsSync(shell)) continue;
-		try {
-			const resolved = execFileSync(shell, ["-l", "-c", `which ${binary}`], {
-				encoding: "utf-8",
-				timeout: 5000,
-			}).trim();
-			if (resolved && existsSync(resolved)) {
-				console.log(`[QMD] Resolved '${binary}' → '${resolved}' (via ${shell})`);
-				return resolved;
+	// Try login-only first (-l), then login+interactive (-li) to pick up
+	// tools configured in .zshrc/.bashrc (e.g. asdf, nvm, mise).
+	const flagSets: string[][] = [["-l", "-c"], ["-li", "-c"]];
+	for (const flags of flagSets) {
+		for (const shell of shells) {
+			if (!existsSync(shell)) continue;
+			try {
+				const resolved = execFileSync(shell, [...flags, `which ${binary}`], {
+					encoding: "utf-8",
+					timeout: 5000,
+				}).trim();
+				if (resolved && existsSync(resolved)) {
+					console.log(`[QMD] Resolved '${binary}' → '${resolved}' (via ${shell} ${flags.join(" ")})`);
+					return resolved;
+				}
+			} catch {
+				// Try next combination
 			}
-		} catch {
-			// Try next shell
 		}
 	}
 	return null;
@@ -87,7 +92,11 @@ function getKnownPaths(binary: string): string[] {
 		"/opt/homebrew/bin/" + binary,
 		"/home/linuxbrew/.linuxbrew/bin/" + binary,
 		"/usr/local/bin/" + binary,
-		...(home ? [join(home, ".local", "bin", binary)] : []),
+		...(home ? [
+			join(home, ".local", "bin", binary),
+			join(home, ".asdf", "shims", binary),
+			join(home, ".local", "share", "mise", "shims", binary),
+		] : []),
 	];
 }
 

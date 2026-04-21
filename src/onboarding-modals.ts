@@ -13,13 +13,16 @@ const QMD_URL = "https://github.com/tobi/qmd";
 type OnCollectionSelected = (collectionName: string) => Promise<void>;
 type OnIndexRequested = () => void;
 type OnOpenSettings = () => void;
+type OnRetry = () => void;
 
 export class QmdNotFoundModal extends Modal {
 	private onOpenSettings: OnOpenSettings;
+	private onRetry: OnRetry;
 
-	constructor(app: App, onOpenSettings: OnOpenSettings) {
+	constructor(app: App, onOpenSettings: OnOpenSettings, onRetry: OnRetry) {
 		super(app);
 		this.onOpenSettings = onOpenSettings;
+		this.onRetry = onRetry;
 	}
 
 	onOpen(): void {
@@ -30,13 +33,19 @@ export class QmdNotFoundModal extends Modal {
 		});
 
 		this.contentEl.createEl("p", {
-			text: "Install QMD and make sure it's available on your PATH, then restart Obsidian.",
+			text: "Install QMD and make sure it's available on your PATH, then come back and retry.",
 		});
 
 		new Setting(this.contentEl)
 			.addButton((btn) =>
 				btn.setButtonText("Open QMD download page").setCta().onClick(() => {
 					window.open(QMD_URL);
+				}),
+			)
+			.addButton((btn) =>
+				btn.setButtonText("Retry detection").onClick(() => {
+					this.close();
+					this.onRetry();
 				}),
 			)
 			.addButton((btn) =>
