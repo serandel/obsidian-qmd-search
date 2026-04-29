@@ -38,7 +38,7 @@ code (qmd://code/)
 	});
 
 	it("returns empty array for no collections", () => {
-		const output = `Collections (0):`;
+		const output = "Collections (0):";
 		expect(parseCollectionListOutput(output)).toEqual([]);
 	});
 

@@ -25,6 +25,10 @@ export default class QmdPlugin extends Plugin {
 	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	private fileWatcherRefs: EventRef[] = [];
 
+	private shuttingDown = false;
+	private restartAttempts = 0;
+	private readonly MAX_RESTART_ATTEMPTS = 3;
+
 	async onload() {
 		await this.loadSettings();
 
@@ -92,10 +96,6 @@ export default class QmdPlugin extends Plugin {
 		if (this.debounceTimer) clearTimeout(this.debounceTimer);
 		this.mcpClient?.close();
 	}
-
-	private shuttingDown = false;
-	private restartAttempts = 0;
-	private readonly MAX_RESTART_ATTEMPTS = 3;
 
 	registerFileWatcher(): void {
 		if (this.fileWatcherRefs.length > 0) return; // already registered

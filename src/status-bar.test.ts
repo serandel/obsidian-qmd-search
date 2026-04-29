@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { QmdStatusBar } from "./status-bar";
-import type { IndexerState } from "./types";
 
 const mockMenuItem = {
 	setTitle: vi.fn().mockReturnThis(),
