@@ -30,7 +30,7 @@ Once QMD is available, the plugin guides you through the rest of the setup on fi
 
 ## Architecture Note
 
-The QMD MCP server currently only exposes read-only tools (query, get, status). Index updates and embedding generation are performed via the CLI (`qmd update`, `qmd embed`) as separate processes. This means the plugin manages two interfaces to QMD: the daemon for search and the CLI for indexing. See [tobi/qmd#587](https://github.com/tobi/qmd/issues/587) for a request to add indexing tools to the MCP server.
+The QMD MCP server currently only exposes read-only tools (query, get, status). Index updates and embedding generation are performed via the CLI (`qmd update`, `qmd embed`) as separate processes, so the plugin manages two interfaces to QMD: the daemon for search and the CLI for indexing. If the MCP server adds index management tools (tracked in [tobi/qmd#587](https://github.com/tobi/qmd/issues/587)), the plugin can be simplified to a single interface.
 
 ## Development
 
